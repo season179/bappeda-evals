@@ -14,7 +14,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -25,6 +24,9 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+
+# Note: lib/ is not ignored here because we use it for our custom modules
+# If you need to ignore pip's lib/ directory, be more specific
 
 # PyInstaller
 #   Usually these files are written by a python script from a template
@@ -214,3 +216,28 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# RAG Evaluation Generated Files
+# Logs directory and all log files
+logs/
+*.log
+
+# Checkpoint and state files
+checkpoint.json
+checkpoint.json.*
+progress_summary.json
+progress_summary.json.*
+
+# Partial and final results
+testset_partial.csv
+testset_partial.csv.*
+testset_final.csv
+synthetic_testset.csv
+
+# Backup files
+*.backup
+*.corrupted
+*.cleared
+
+# Execution logs
+execution-log.txt
