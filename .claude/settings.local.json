@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(ragas)",
+      "Bash(python generate_testset.py:*)",
+      "Bash(echo:*)",
+      "Bash(.venv/bin/pip:*)",
+      "Bash(uv tree:*)",
+      "Bash(uv run python:*)",
+      "Bash(uv add:*)",
+      "Bash(pgrep:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
