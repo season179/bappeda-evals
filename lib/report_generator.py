@@ -21,6 +21,16 @@ class RagasReportGenerator:
         """Initialize the report generator"""
         self.logger = get_logger(__name__)
 
+    def _has_metadata(self, detailed_results: pd.DataFrame) -> bool:
+        """Check if DataFrame has _metadata column"""
+        return '_metadata' in detailed_results.columns
+
+    def _safe_get_metadata(self, row, key: str, default=None):
+        """Safely get metadata value from row"""
+        if not isinstance(row.get('_metadata'), dict):
+            return default
+        return row['_metadata'].get(key, default)
+
     def generate_report(
         self,
         results: Dict[str, Any],
@@ -107,9 +117,21 @@ class RagasReportGenerator:
 
         # Dataset statistics
         total_queries = len(detailed_results)
-        queries_with_contexts = sum(
-            detailed_results['_metadata'].apply(lambda x: x.get('has_contexts', False))
-        )
+
+        # Safely count queries with contexts
+        if self._has_metadata(detailed_results):
+            queries_with_contexts = sum(
+                detailed_results['_metadata'].apply(lambda x: x.get('has_contexts', False) if isinstance(x, dict) else False)
+            )
+        else:
+            # Fallback: check retrieved_contexts column
+            if 'retrieved_contexts' in detailed_results.columns:
+                queries_with_contexts = sum(
+                    detailed_results['retrieved_contexts'].apply(lambda x: isinstance(x, list) and len(x) > 0)
+                )
+            else:
+                queries_with_contexts = 0
+
         queries_without_contexts = total_queries - queries_with_contexts
 
         lines.extend([
@@ -253,14 +275,16 @@ class RagasReportGenerator:
         ])
 
         for i, (idx, row) in enumerate(sorted_df.head(top_n).iterrows(), 1):
-            query_id = row['_metadata'].get('query_id', idx)
+            query_id = self._safe_get_metadata(row, 'query_id', idx)
             query = row['user_input'][:100] + "..." if len(row['user_input']) > 100 else row['user_input']
             score = row[ranking_metric]
+
+            contexts_count = len(row['retrieved_contexts']) if isinstance(row.get('retrieved_contexts'), list) else 0
 
             lines.extend([
                 f"**{i}. Query {query_id}** (Score: {score:.4f})",
                 f"- Query: `{query}`",
-                f"- Retrieved Contexts: {len(row['retrieved_contexts'])}",
+                f"- Retrieved Contexts: {contexts_count}",
                 ""
             ])
 
@@ -273,15 +297,17 @@ class RagasReportGenerator:
         ])
 
         for i, (idx, row) in enumerate(sorted_df.tail(top_n).iloc[::-1].iterrows(), 1):
-            query_id = row['_metadata'].get('query_id', idx)
+            query_id = self._safe_get_metadata(row, 'query_id', idx)
             query = row['user_input'][:100] + "..." if len(row['user_input']) > 100 else row['user_input']
             score = row[ranking_metric]
-            error = row['_metadata'].get('error', '')
+            error = self._safe_get_metadata(row, 'error', '')
+
+            contexts_count = len(row['retrieved_contexts']) if isinstance(row.get('retrieved_contexts'), list) else 0
 
             lines.extend([
                 f"**{i}. Query {query_id}** (Score: {score:.4f})",
                 f"- Query: `{query}`",
-                f"- Retrieved Contexts: {len(row['retrieved_contexts'])}",
+                f"- Retrieved Contexts: {contexts_count}",
             ])
 
             if error:
@@ -302,9 +328,18 @@ class RagasReportGenerator:
         ]
 
         # Count queries without contexts
-        no_contexts = sum(
-            ~detailed_results['_metadata'].apply(lambda x: x.get('has_contexts', False))
-        )
+        if self._has_metadata(detailed_results):
+            no_contexts = sum(
+                ~detailed_results['_metadata'].apply(lambda x: x.get('has_contexts', False) if isinstance(x, dict) else False)
+            )
+        else:
+            # Fallback: check retrieved_contexts column
+            if 'retrieved_contexts' in detailed_results.columns:
+                no_contexts = sum(
+                    ~detailed_results['retrieved_contexts'].apply(lambda x: isinstance(x, list) and len(x) > 0)
+                )
+            else:
+                no_contexts = 0
 
         total_queries = len(detailed_results)
 
@@ -326,34 +361,36 @@ class RagasReportGenerator:
             lines.append("")
 
         # Error analysis
-        errors = detailed_results['_metadata'].apply(lambda x: x.get('error', '')).value_counts()
-        if len(errors) > 0 and errors.iloc[0] != '':
-            lines.extend([
-                "### Error Summary",
-                "",
-                "| Error Type | Count |",
-                "|------------|-------|"
-            ])
+        if self._has_metadata(detailed_results):
+            errors = detailed_results['_metadata'].apply(lambda x: x.get('error', '') if isinstance(x, dict) else '').value_counts()
+            if len(errors) > 0 and errors.iloc[0] != '':
+                lines.extend([
+                    "### Error Summary",
+                    "",
+                    "| Error Type | Count |",
+                    "|------------|-------|"
+                ])
 
-            for error, count in errors.items():
-                if error:  # Skip empty errors
-                    error_short = error[:50] + "..." if len(error) > 50 else error
-                    lines.append(f"| {error_short} | {count} |")
+                for error, count in errors.items():
+                    if error:  # Skip empty errors
+                        error_short = error[:50] + "..." if len(error) > 50 else error
+                        lines.append(f"| {error_short} | {count} |")
 
-            lines.append("")
+                lines.append("")
 
         # Latency analysis
-        latencies = detailed_results['_metadata'].apply(lambda x: x.get('api_latency_ms', 0))
-        if latencies.sum() > 0:
-            lines.extend([
-                "### API Performance",
-                "",
-                f"- **Mean Latency**: {latencies.mean():.0f}ms",
-                f"- **Median Latency**: {latencies.median():.0f}ms",
-                f"- **P95 Latency**: {latencies.quantile(0.95):.0f}ms",
-                f"- **Max Latency**: {latencies.max():.0f}ms",
-                ""
-            ])
+        if self._has_metadata(detailed_results):
+            latencies = detailed_results['_metadata'].apply(lambda x: x.get('api_latency_ms', 0) if isinstance(x, dict) else 0)
+            if latencies.sum() > 0:
+                lines.extend([
+                    "### API Performance",
+                    "",
+                    f"- **Mean Latency**: {latencies.mean():.0f}ms",
+                    f"- **Median Latency**: {latencies.median():.0f}ms",
+                    f"- **P95 Latency**: {latencies.quantile(0.95):.0f}ms",
+                    f"- **Max Latency**: {latencies.max():.0f}ms",
+                    ""
+                ])
 
         return lines
 
@@ -411,9 +448,19 @@ class RagasReportGenerator:
                 )
 
         # Check for empty contexts
-        no_contexts = sum(
-            ~detailed_results['_metadata'].apply(lambda x: x.get('has_contexts', False))
-        )
+        if self._has_metadata(detailed_results):
+            no_contexts = sum(
+                ~detailed_results['_metadata'].apply(lambda x: x.get('has_contexts', False) if isinstance(x, dict) else False)
+            )
+        else:
+            # Fallback: check retrieved_contexts column
+            if 'retrieved_contexts' in detailed_results.columns:
+                no_contexts = sum(
+                    ~detailed_results['retrieved_contexts'].apply(lambda x: isinstance(x, list) and len(x) > 0)
+                )
+            else:
+                no_contexts = 0
+
         if no_contexts > len(detailed_results) * 0.1:  # More than 10%
             recommendations.append(
                 f"**High Context Failure Rate** ({no_contexts} queries): "

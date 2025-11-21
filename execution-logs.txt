@@ -1,0 +1,180 @@
+uv run python run_ragas_evaluation.py --verbose
+[06:59:40] [INFO] Logging initialized - Main log: logs/main_20251122_065940.log
+[06:59:40] [INFO] ================================================================================
+[06:59:40] [INFO] Ragas Evaluation
+[06:59:40] [INFO] ================================================================================
+[06:59:40] [INFO] Configuration:
+[06:59:40] [INFO]   Input file: ./results/eval_results.jsonl
+[06:59:40] [INFO]   Output dir: ./results
+[06:59:40] [INFO]   Detailed results: results/ragas_eval_detailed.jsonl
+[06:59:40] [INFO]   Report: results/ragas_eval_report.md
+[06:59:40] [INFO]   LLM Model: x-ai/grok-code-fast-1
+[06:59:40] [INFO]   Embedding Model: qwen/qwen3-embedding-8b
+[06:59:40] [INFO]   Metrics: ['context_precision', 'context_recall', 'context_entity_recall', 'answer_relevancy', 'faithfulness', 'answer_correctness', 'answer_similarity', 'context_utilization']
+[06:59:40] [INFO]   Batch size: 10
+[06:59:40] [INFO]   Include failed queries: True
+[06:59:40] [INFO] 
+================================================================================
+[06:59:40] [INFO] PRE-FLIGHT CHECKS
+[06:59:40] [INFO] ================================================================================
+[06:59:40] [INFO] ✓ Input file exists: ./results/eval_results.jsonl
+[06:59:40] [INFO] ✓ Output directory ready: ./results
+[06:59:40] [INFO] 
+================================================================================
+[06:59:40] [INFO] LOADING AND TRANSFORMING DATA
+[06:59:40] [INFO] ================================================================================
+[06:59:40] [INFO] ✓ Loaded and transformed 5 records
+[06:59:40] [INFO] 
+================================================================================
+[06:59:40] [INFO] INITIALIZING RAGAS EVALUATOR
+[06:59:40] [INFO] ================================================================================
+[RagasEvaluator] Using OpenRouterChatOpenAI wrapper for x-ai/grok-code-fast-1
+[RagasEvaluator] LLM class: OpenRouterChatOpenAI
+[06:59:40] [INFO] ✓ Ragas evaluator initialized
+[06:59:40] [INFO] 
+================================================================================
+[06:59:40] [INFO] RUNNING RAGAS EVALUATION
+[06:59:40] [INFO] ================================================================================
+Evaluating:   0%|                                                                                                                                                                 | 0/40 [00:00<?, ?it/s][OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI]   Got 1 generations for prompt 1
+[OpenRouterChatOpenAI] Returning 1 generation groups
+LLM returned 1 generations instead of requested 3. Proceeding with 1 generations.
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+Evaluating:   2%|███▊                                                                                                                                                     | 1/40 [00:13<09:04, 13.97s/it][OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+Evaluating:   5%|███████▋                                                                                                                                                 | 2/40 [00:15<04:10,  6.59s/it][OpenRouterChatOpenAI]   Got 1 generations for prompt 1
+[OpenRouterChatOpenAI] Returning 1 generation groups
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI]   Got 1 generations for prompt 1
+[OpenRouterChatOpenAI] Returning 1 generation groups
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI]   Got 1 generations for prompt 1
+[OpenRouterChatOpenAI] Returning 1 generation groups
+LLM returned 1 generations instead of requested 3. Proceeding with 1 generations.
+^C[OpenRouterChatOpenAI]   Got 1 generations for prompt 1
+[OpenRouterChatOpenAI] Returning 1 generation groups
+[OpenRouterChatOpenAI]   Got 1 generations for prompt 1
+[OpenRouterChatOpenAI] Returning 1 generation groups
+[OpenRouterChatOpenAI]   Got 1 generations for prompt 1
+[OpenRouterChatOpenAI] Returning 1 generation groups
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI]   Got 1 generations for prompt 1
+[OpenRouterChatOpenAI] Returning 1 generation groups
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI]   Got 1 generations for prompt 1
+[OpenRouterChatOpenAI] Returning 1 generation groups
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI]   Got 1 generations for prompt 1
+[OpenRouterChatOpenAI] Returning 1 generation groups
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI]   Got 1 generations for prompt 1
+[OpenRouterChatOpenAI] Returning 1 generation groups
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+[OpenRouterChatOpenAI]   Got 1 generations for prompt 1
+[OpenRouterChatOpenAI] Returning 1 generation groups
+[OpenRouterChatOpenAI] agenerate_prompt called with 1 prompts
+[OpenRouterChatOpenAI] Processing prompt 1/1
+Evaluating:   8%|███████████▍                                                                                                                                             | 3/40 [00:35<07:14, 11.74s/it]
+Exception raised in Job[19]: AssertionError(LLM is not set)
+Exception raised in Job[20]: AssertionError(LLM is not set)
+Exception raised in Job[21]: AssertionError(LLM must be set)
+Exception raised in Job[22]: AssertionError(Error: 'answer_similarity' requires embeddings to be set.)
+Exception raised in Job[23]: AssertionError(LLM is not set)
+Exception raised in Job[24]: AssertionError(LLM is not set)
+Traceback (most recent call last):
+  File "/Users/season/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/evaluation.py", line 434, in _async_wrapper
+    return await aevaluate(
+           ^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/evaluation.py", line 271, in aevaluate
+    results = await executor.aresults()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/executor.py", line 200, in aresults
+    results = await self._process_jobs()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/executor.py", line 131, in _process_jobs
+    await self._process_coroutines(
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/executor.py", line 184, in _process_coroutines
+    async for result in process_futures(
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/async_utils.py", line 114, in process_futures
+    result = await future
+             ^^^^^^^^^^^^
+  File "/Users/season/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/tasks.py", line 627, in _wait_for_one
+    f = await done.get()
+        ^^^^^^^^^^^^^^^^
+  File "/Users/season/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/queues.py", line 158, in get
+    await getter
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/run_ragas_evaluation.py", line 390, in <module>
+    main()
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/run_ragas_evaluation.py", line 295, in main
+    results_dict, evaluation_result = evaluator.evaluate_with_retry(
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/lib/ragas_evaluator.py", line 297, in evaluate_with_retry
+    return self.evaluate(
+           ^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/lib/ragas_evaluator.py", line 244, in evaluate
+    result = evaluate(
+             ^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/_analytics.py", line 277, in wrapper
+    result = func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/evaluation.py", line 461, in evaluate
+    return run(_async_wrapper())
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/async_utils.py", line 156, in run
+    return asyncio.run(coro)
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/season/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/Users/season/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 123, in run
+    raise KeyboardInterrupt()
+KeyboardInterrupt
+sys:1: RuntimeWarning: coroutine 'Executor.wrap_callable_with_index.<locals>.wrapped_callable_async' was never awaited

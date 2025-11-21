@@ -8,8 +8,9 @@ import time
 from typing import Any, Dict, List, Optional
 
 from datasets import Dataset
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from ragas import evaluate
+from ragas.llms import LangchainLLMWrapper
 from ragas.metrics import (
     AnswerCorrectness,
     AnswerRelevancy,
@@ -22,33 +23,34 @@ from ragas.metrics import (
 )
 
 from .logger import get_logger
+from .openrouter_chat import OpenRouterChatOpenAI
 
 
 class RagasEvaluator:
     """Wrapper for Ragas evaluation with custom configuration"""
 
-    # Available metrics
-    AVAILABLE_METRICS = {
-        'context_precision': ContextPrecision(),
-        'context_recall': ContextRecall(),
-        'context_entity_recall': ContextEntityRecall(),
-        'answer_relevancy': AnswerRelevancy(),
-        'faithfulness': Faithfulness(),
-        'answer_correctness': AnswerCorrectness(),
-        'answer_similarity': AnswerSimilarity(),
-        'context_utilization': ContextUtilization(),
+    # Available metric classes (not instances - we'll create fresh instances each time)
+    AVAILABLE_METRIC_CLASSES = {
+        'context_precision': ContextPrecision,
+        'context_recall': ContextRecall,
+        'context_entity_recall': ContextEntityRecall,
+        'answer_relevancy': AnswerRelevancy,
+        'faithfulness': Faithfulness,
+        'answer_correctness': AnswerCorrectness,
+        'answer_similarity': AnswerSimilarity,
+        'context_utilization': ContextUtilization,
     }
 
     def __init__(
         self,
         api_key: str,
         api_base_url: str,
-        llm_model: str = "x-ai/grok-code-fast-1",
-        embedding_model: str = "qwen/qwen3-embedding-8b",
-        llm_temperature: float = 0.7,
-        timeout: int = 120,
-        embeddings_timeout: int = 120,
-        max_retries: int = 3
+        llm_model: str,
+        embedding_model: str,
+        llm_temperature: float,
+        timeout: int,
+        embeddings_timeout: int,
+        max_retries: int
     ):
         """
         Initialize Ragas evaluator
@@ -79,15 +81,21 @@ class RagasEvaluator:
 
         self.logger.info(f"Initialized Ragas evaluator with LLM: {llm_model}")
 
-    def _init_llm(self) -> ChatOpenAI:
+    def _init_llm(self) -> LangchainLLMWrapper:
         """
         Initialize LangChain LLM for Ragas
 
+        Uses OpenRouterChatOpenAI wrapper for compatibility with OpenRouter API,
+        which doesn't support the 'n' parameter for multiple completions.
+        Then wraps it in LangchainLLMWrapper with bypass_n=True to tell Ragas
+        to use prompt batching instead of the 'n' parameter.
+
         Returns:
-            ChatOpenAI instance configured for OpenRouter
+            LangchainLLMWrapper wrapping OpenRouterChatOpenAI
         """
         try:
-            llm = ChatOpenAI(
+            # Create base LangChain LLM
+            base_llm = OpenRouterChatOpenAI(
                 model=self.llm_model,
                 openai_api_key=self.api_key,
                 openai_api_base=self.api_base_url,
@@ -96,7 +104,18 @@ class RagasEvaluator:
                 request_timeout=self.timeout,
                 max_retries=self.max_retries
             )
+
+            # Wrap in Ragas's LangchainLLMWrapper with bypass_n=True
+            # This tells Ragas to NOT use the 'n' parameter, and instead
+            # send multiple prompts: [prompt, prompt, prompt]
+            llm = LangchainLLMWrapper(
+                langchain_llm=base_llm,
+                bypass_n=True  # Critical: tells Ragas to batch prompts instead of using n
+            )
+
             self.logger.info(f"Initialized LLM: {self.llm_model} (timeout: {self.timeout}s)")
+            print(f"[RagasEvaluator] Using OpenRouterChatOpenAI with bypass_n=True")
+            print(f"[RagasEvaluator] Wrapper class: {llm.__class__.__name__}")
             return llm
 
         except Exception as e:
@@ -174,6 +193,8 @@ class RagasEvaluator:
         """
         Get list of Ragas metrics to evaluate
 
+        Creates fresh metric instances to avoid state issues between evaluations.
+
         Args:
             metric_names: List of metric names to use. If None, use all metrics.
 
@@ -182,12 +203,15 @@ class RagasEvaluator:
         """
         if metric_names is None:
             # Use all available metrics
-            metric_names = list(self.AVAILABLE_METRICS.keys())
+            metric_names = list(self.AVAILABLE_METRIC_CLASSES.keys())
 
         metrics = []
         for name in metric_names:
-            if name in self.AVAILABLE_METRICS:
-                metrics.append(self.AVAILABLE_METRICS[name])
+            if name in self.AVAILABLE_METRIC_CLASSES:
+                # Create fresh instance of the metric
+                metric_class = self.AVAILABLE_METRIC_CLASSES[name]
+                metric_instance = metric_class()
+                metrics.append(metric_instance)
                 self.logger.debug(f"Added metric: {name}")
             else:
                 self.logger.warning(f"Unknown metric: {name}")

@@ -17,7 +17,9 @@
       "Bash(python3 -c:*)",
       "Bash(cat:*)",
       "Bash(python3:*)",
-      "Bash(results/test_sample.jsonl)"
+      "Bash(results/test_sample.jsonl)",
+      "Bash(pip show:*)",
+      "Bash(uv run python3:*)"
     ],
     "deny": [],
     "ask": []

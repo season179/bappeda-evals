@@ -194,12 +194,18 @@ def main():
         logger.error("OPENROUTER_API_KEY not found in environment variables")
         sys.exit(1)
 
+    # Get Ragas evaluation LLM config for logging (falls back to main LLM config)
+    eval_llm_config = eval_config.get('llm', {})
+    ragas_llm_model = eval_llm_config.get('model', llm_config.get('model'))
+    ragas_llm_temperature = eval_llm_config.get('temperature', llm_config.get('temperature', 0.7))
+
     logger.info(f"Configuration:")
     logger.info(f"  Input file: {input_file}")
     logger.info(f"  Output dir: {output_dir}")
     logger.info(f"  Detailed results: {detailed_results_path}")
     logger.info(f"  Report: {report_path}")
-    logger.info(f"  LLM Model: {llm_config.get('model')}")
+    logger.info(f"  Ragas LLM Model: {ragas_llm_model}")
+    logger.info(f"  Ragas LLM Temperature: {ragas_llm_temperature}")
     logger.info(f"  Embedding Model: {embeddings_config.get('model')}")
     logger.info(f"  Metrics: {metrics or 'all'}")
     logger.info(f"  Batch size: {batch_size}")
@@ -254,9 +260,9 @@ def main():
         evaluator = RagasEvaluator(
             api_key=api_key,
             api_base_url=api_config.get('base_url'),
-            llm_model=llm_config.get('model'),
+            llm_model=ragas_llm_model,
             embedding_model=embeddings_config.get('model'),
-            llm_temperature=llm_config.get('temperature', 0.7),
+            llm_temperature=ragas_llm_temperature,
             timeout=llm_timeout,
             embeddings_timeout=embeddings_timeout,
             max_retries=max_retries
@@ -329,9 +335,25 @@ def main():
         # Convert evaluation dataset to DataFrame for report
         detailed_df = evaluation_result.dataset.to_pandas()
 
+        # Generate _metadata column for report generator
+        def generate_metadata(row):
+            """Generate metadata dict for each row"""
+            retrieved_contexts = row.get('retrieved_contexts', [])
+            has_contexts = isinstance(retrieved_contexts, list) and len(retrieved_contexts) > 0
+
+            return {
+                'has_contexts': has_contexts,
+                'query_id': row.name,
+                'error': '',
+                'api_latency_ms': 0
+            }
+
+        detailed_df['_metadata'] = detailed_df.apply(generate_metadata, axis=1)
+        logger.info(f"Generated _metadata for {len(detailed_df)} queries")
+
         # Add config context for report
         report_config = {
-            'llm_model': llm_config.get('model'),
+            'llm_model': ragas_llm_model,
             'embedding_model': embeddings_config.get('model'),
             'api_base_url': api_config.get('base_url')
         }
