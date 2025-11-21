@@ -1,0 +1,210 @@
+uv run python generate_multihop_testset.py 
+[22:54:12] [INFO] Logging initialized - Main log: logs/main_20251120_225412.log
+[22:54:12] [INFO] ================================================================================
+[22:54:12] [INFO] Multi-Hop Query Generation using Knowledge Graph
+[22:54:12] [INFO] ================================================================================
+[22:54:12] [INFO] 
+[22:54:12] [INFO] This script generates queries that require synthesizing information
+[22:54:12] [INFO] across multiple DKI Jakarta government planning documents.
+[22:54:12] [INFO] 
+[22:54:12] [INFO] ================================================================================
+[22:54:12] [INFO] API Validation
+[22:54:12] [INFO] ================================================================================
+[22:54:12] [INFO] API Validation Configuration:
+  Base URL: https://openrouter.ai/api/v1
+  LLM Model: x-ai/grok-code-fast-1
+  Embedding Model: qwen/qwen3-embedding-8b
+  API Key: ********************4d2f9faf
+[22:54:12] [INFO] 
+[22:54:17] [INFO] 
+[22:54:17] [INFO] ================================================================================
+[22:54:17] [INFO] API Validation Successful!
+[22:54:17] [INFO] ================================================================================
+[22:54:17] [INFO] Configuration:
+[22:54:17] [INFO]   Target queries: 20
+[22:54:17] [INFO]   Language: id
+[22:54:17] [INFO]   Overlap threshold: 0.6
+[22:54:17] [INFO]   Max keyphrases: 10
+[22:54:17] [INFO] 
+[22:54:17] [INFO] ================================================================================
+[22:54:17] [INFO] PHASE 0: Document Loading
+[22:54:17] [INFO] ================================================================================
+[22:54:17] [INFO] 
+[22:54:17] [INFO] [0.1] Loading documents from ./knowledge-files...
+[22:54:17] [INFO]       Loaded 3 document(s):
+[22:54:17] [INFO]         [1] PERDA NO.3 TAHUN 2025.md (23,872 characters)
+[22:54:17] [INFO]         [2] PERDA NO.2 TAHUN 2025.md (13,292 characters)
+[22:54:17] [INFO]         [3] PERDA NO.1 TAHUN 2025.md (16,045 characters)
+[22:54:17] [INFO] 
+[22:54:17] [INFO]       Total content: 53,209 characters
+[22:54:17] [INFO] 
+[22:54:17] [INFO] [0.2] Configuring LLM: x-ai/grok-code-fast-1...
+/Users/season/Personal/bappeda/rag_eval_ragas/generate_multihop_testset.py:318: DeprecationWarning: LangchainLLMWrapper is deprecated and will be removed in a future version. Use llm_factory instead: from openai import OpenAI; from ragas.llms import llm_factory; llm = llm_factory('gpt-4o-mini', client=OpenAI(api_key='...'))
+  generator_llm = LangchainLLMWrapper(
+[22:54:17] [INFO]       LLM configured successfully
+[22:54:17] [INFO] 
+[22:54:17] [INFO] [0.3] Configuring Embeddings: qwen/qwen3-embedding-8b...
+[22:54:17] [INFO]       Embeddings configured successfully
+[22:54:17] [INFO] 
+[22:54:17] [INFO] [0.4] Setting up DKI Jakarta government worker personas...
+[22:54:17] [INFO] Creating personas from configuration...
+[22:54:17] [INFO]   [1/5] Perencana Pembangunan Daerah
+[22:54:17] [INFO]   [2/5] Analis Anggaran Daerah
+[22:54:17] [INFO]   [3/5] Kepala Seksi Perencanaan
+[22:54:17] [INFO]   [4/5] Peneliti Kebijakan Publik
+[22:54:17] [INFO]   [5/5] Koordinator Program Pembangunan
+[22:54:17] [INFO] Created 5 personas
+[22:54:17] [INFO] 
+[22:54:17] [INFO] ================================================================================
+[22:54:17] [INFO] PHASE 1: Multi-Hop Query Generation
+[22:54:17] [INFO] ================================================================================
+[22:54:17] [INFO] 
+[22:54:17] [INFO] [1.1] Initializing TestsetGenerator with multi-hop synthesizers...
+[22:54:17] [INFO]       Language: id (Bahasa Indonesia)
+[22:54:17] [INFO]       Target queries: 20
+[22:54:17] [INFO] 
+[22:54:17] [INFO] [1.2] Configuring multi-hop query distribution...
+[22:54:17] [INFO]       Using MultiHopAbstractQuerySynthesizer and MultiHopSpecificQuerySynthesizer
+[22:54:17] [INFO] 
+[22:54:17] [INFO]       Distribution:
+[22:54:17] [INFO]         - MultiHopAbstractQuerySynthesizer: 50%
+[22:54:17] [INFO]         - MultiHopSpecificQuerySynthesizer: 50%
+[22:54:17] [INFO] 
+[22:54:17] [INFO] [1.3] Generating multi-hop queries...
+[22:54:17] [INFO]       This process builds knowledge graph and generates queries
+[22:54:17] [INFO]       This may take several minutes...
+[22:54:17] [INFO] 
+Applying HeadlinesExtractor: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 3/3 [00:27<00:00,  9.01s/it]
+Applying HeadlineSplitter: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 3/3 [00:00<00:00, 106.83it/s]
+Applying SummaryExtractor: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 3/3 [00:09<00:00,  3.26s/it]
+Applying CustomNodeFilter: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 30/30 [00:57<00:00,  1.90s/it]
+Applying EmbeddingExtractor:   0%|                                                                                                                                                 | 0/3 [00:00<?, ?it/s]/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/testset/transforms/base.py:202: UserWarning: Using sync embedding model OpenAIEmbeddings in async context. This may impact performance. Consider using an async-compatible embedding model for better performance.
+  property_name, property_value = await self.extract(node)
+Applying EmbeddingExtractor: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 3/3 [00:02<00:00,  1.01it/s]
+Applying ThemesExtractor: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 30/30 [00:54<00:00,  1.81s/it]
+Applying NERExtractor: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 30/30 [00:58<00:00,  1.94s/it]
+Applying CosineSimilarityBuilder: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 214.50it/s]
+Applying OverlapScoreBuilder: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 100.68it/s]
+Generating personas: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 3/3 [00:09<00:00,  3.11s/it]
+Generating Scenarios: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [02:03<00:00, 61.57s/it]
+Generating Samples:  95%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊       | 19/20 [00:35<00:01,  1.42s/it]
+Generating Samples:  95%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊       | 19/20 [19:31<01:01, 61.65s/it]
+[23:19:30] [ERROR] 
+[23:19:30] [ERROR] ================================================================================
+[23:19:30] [ERROR] Multi-hop query generation failed!
+[23:19:30] [ERROR] ================================================================================
+[23:19:30] [ERROR] ❌ Unknown Error: Failed to parse StringIO from completion {"query": "Peraturan Daerah perubahan APBD Tahun Anggaran 2025 Jakarta dasar hukum apa saja?", "answer": "Dasar hukum untuk Peraturan Daerah tentang Perubahan Anggaran Pendapatan dan Belanja Daerah Tahun Anggaran 2025 di Jakarta meliputi: 1. Undang-Undang Nomor 17 Tahun 2003 tentang Keuangan Negara; 2. Undang-Undang Nomor 1 Tahun 2004 tentang Perbendaharaan Negara; 3. Undang-Undang Nomor 25 Tahun 2004 tentang Sistem Perencanaan Pembangunan Nasional; 4. Undang-Undang Nomor 29 Tahun 2007 tentang Pemerintah Provinsi Daerah Khusus Ibukota Jakarta sebagai Ibukota Negara Kesatuan Republik Indonesia; 5. Undang-Undang Nomor 23 Tahun 2014 tentang Pemerintahan Daerah sebagaimana telah beberapa kali diubah terakhir dengan Undang-Undang Nomor 6 Tahun 2023 tentang Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2022 tentang Cipta Kerja Menjadi Undang-Undang; 6. Undang-Undang Nomor 1 Tahun 2022 tentang Hubungan Keuangan antara Pemerintah Pusat dan Pemerintahan Daerah; 7. Peraturan Pemerintah Nomor 109 Tahun 2000 tentang Kedudukan Keuangan Kepala Daerah dan Wakil Kepala Daerah; 8. Peraturan Pemerintah Nomor 23 Tahun 2005 tentang Pengelolaan Keuangan Badan Layanan Umum."}. Got: 1 validation error for StringIO
+text
+  Field required [type=missing, input_value={'query': 'Peraturan Daer...an Badan Layanan Umum.'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/OUTPUT_PARSING_FAILURE 
+
+Progress tracking stopped due to error: Failed to parse StringIO from completion {"query": "Peraturan Daerah perubahan APBD Tahun Anggaran 2025 Jakarta dasar hukum apa saja?", "answer": "Dasar hukum untuk Peraturan Daerah tentang Perubahan Anggaran Pendapatan dan Belanja Daerah Tahun Anggaran 2025 di Jakarta meliputi: 1. Undang-Undang Nomor 17 Tahun 2003 tentang Keuangan Negara; 2. Undang-Undang Nomor 1 Tahun 2004 tentang Perbendaharaan Negara; 3. Undang-Undang Nomor 25 Tahun 2004 tentang Sistem Perencanaan Pembangunan Nasional; 4. Undang-Undang Nomor 29 Tahun 2007 tentang Pemerintah Provinsi Daerah Khusus Ibukota Jakarta sebagai Ibukota Negara Kesatuan Republik Indonesia; 5. Undang-Undang Nomor 23 Tahun 2014 tentang Pemerintahan Daerah sebagaimana telah beberapa kali diubah terakhir dengan Undang-Undang Nomor 6 Tahun 2023 tentang Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2022 tentang Cipta Kerja Menjadi Undang-Undang; 6. Undang-Undang Nomor 1 Tahun 2022 tentang Hubungan Keuangan antara Pemerintah Pusat dan Pemerintahan Daerah; 7. Peraturan Pemerintah Nomor 109 Tahun 2000 tentang Kedudukan Keuangan Kepala Daerah dan Wakil Kepala Daerah; 8. Peraturan Pemerintah Nomor 23 Tahun 2005 tentang Pengelolaan Keuangan Badan Layanan Umum."}. Got: 1 validation error for StringIO
+text
+  Field required [type=missing, input_value={'query': 'Peraturan Daer...an Badan Layanan Umum.'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/OUTPUT_PARSING_FAILURE 
+Traceback (most recent call last):
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/langchain_core/output_parsers/pydantic.py", line 28, in _parse_obj
+    return self.pydantic_object.model_validate(obj)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/pydantic/main.py", line 716, in model_validate
+    return cls.__pydantic_validator__.validate_python(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for StringIO
+text
+  Field required [type=missing, input_value={'query': 'Peraturan Daer...an Badan Layanan Umum.'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/generate_multihop_testset.py", line 484, in <module>
+    main()
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/generate_multihop_testset.py", line 408, in main
+    dataset = generator.generate_with_langchain_docs(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/testset/synthesizers/generate.py", line 198, in generate_with_langchain_docs
+    return self.generate(
+           ^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/testset/synthesizers/generate.py", line 476, in generate
+    raise e
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/testset/synthesizers/generate.py", line 473, in generate
+    eval_samples = exec.results()
+                   ^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/executor.py", line 215, in results
+    return run(_async_wrapper)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/async_utils.py", line 156, in run
+    return asyncio.run(coro)
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/season/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/Users/season/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/executor.py", line 212, in _async_wrapper
+    return await self.aresults()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/executor.py", line 200, in aresults
+    results = await self._process_jobs()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/executor.py", line 131, in _process_jobs
+    await self._process_coroutines(
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/executor.py", line 189, in _process_coroutines
+    raise result
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/async_utils.py", line 114, in process_futures
+    result = await future
+             ^^^^^^^^^^^^
+  File "/Users/season/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/tasks.py", line 631, in _wait_for_one
+    return f.result()  # May raise f.exception().
+           ^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/executor.py", line 73, in wrapped_callable_async
+    raise e
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/executor.py", line 69, in wrapped_callable_async
+    result = await callable(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/testset/synthesizers/base.py", line 135, in generate_sample
+    sample = await self._generate_sample(scenario, sample_generation_grp)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/testset/synthesizers/multi_hop/base.py", line 169, in _generate_sample
+    response = await self.generate_query_reference_prompt.generate(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/prompt/pydantic_prompt.py", line 168, in generate
+    output_single = await self.generate_multiple(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/prompt/pydantic_prompt.py", line 291, in generate_multiple
+    answer = await parser.parse_output_string(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/prompt/pydantic_prompt.py", line 514, in parse_output_string
+    fixed_output_string = await fix_output_format_prompt.generate(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/prompt/pydantic_prompt.py", line 168, in generate
+    output_single = await self.generate_multiple(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/prompt/pydantic_prompt.py", line 291, in generate_multiple
+    answer = await parser.parse_output_string(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/ragas/prompt/pydantic_prompt.py", line 524, in parse_output_string
+    result = super().parse(fixed_output_string.text)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/langchain_core/output_parsers/pydantic.py", line 80, in parse
+    return super().parse(text)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/langchain_core/output_parsers/json.py", line 98, in parse
+    return self.parse_result([Generation(text=text)])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/langchain_core/output_parsers/pydantic.py", line 65, in parse_result
+    return self._parse_obj(json_object)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/season/Personal/bappeda/rag_eval_ragas/.venv/lib/python3.12/site-packages/langchain_core/output_parsers/pydantic.py", line 35, in _parse_obj
+    raise self._parser_exception(e, obj) from e
+langchain_core.exceptions.OutputParserException: Failed to parse StringIO from completion {"query": "Peraturan Daerah perubahan APBD Tahun Anggaran 2025 Jakarta dasar hukum apa saja?", "answer": "Dasar hukum untuk Peraturan Daerah tentang Perubahan Anggaran Pendapatan dan Belanja Daerah Tahun Anggaran 2025 di Jakarta meliputi: 1. Undang-Undang Nomor 17 Tahun 2003 tentang Keuangan Negara; 2. Undang-Undang Nomor 1 Tahun 2004 tentang Perbendaharaan Negara; 3. Undang-Undang Nomor 25 Tahun 2004 tentang Sistem Perencanaan Pembangunan Nasional; 4. Undang-Undang Nomor 29 Tahun 2007 tentang Pemerintah Provinsi Daerah Khusus Ibukota Jakarta sebagai Ibukota Negara Kesatuan Republik Indonesia; 5. Undang-Undang Nomor 23 Tahun 2014 tentang Pemerintahan Daerah sebagaimana telah beberapa kali diubah terakhir dengan Undang-Undang Nomor 6 Tahun 2023 tentang Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2022 tentang Cipta Kerja Menjadi Undang-Undang; 6. Undang-Undang Nomor 1 Tahun 2022 tentang Hubungan Keuangan antara Pemerintah Pusat dan Pemerintahan Daerah; 7. Peraturan Pemerintah Nomor 109 Tahun 2000 tentang Kedudukan Keuangan Kepala Daerah dan Wakil Kepala Daerah; 8. Peraturan Pemerintah Nomor 23 Tahun 2005 tentang Pengelolaan Keuangan Badan Layanan Umum."}. Got: 1 validation error for StringIO
+text
+  Field required [type=missing, input_value={'query': 'Peraturan Daer...an Badan Layanan Umum.'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/OUTPUT_PARSING_FAILURE 

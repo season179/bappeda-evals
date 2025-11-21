@@ -8,7 +8,8 @@ api:
 
 # LLM Configuration (Generator)
 llm:
-  model: "x-ai/grok-code-fast-1"
+  # model: "x-ai/grok-code-fast-1"
+  model: "google/gemini-2.5-flash"
   temperature: 0.7
   max_tokens: null  # null = model default
 
@@ -29,13 +30,50 @@ knowledge_base:
 # Testset Generation Configuration
 generation:
   # Number of samples to generate
-  test_size: 100
+  test_size: 3
 
   # Query distribution (must sum to 1.0)
   distribution:
     single_hop: 0.40          # Simple queries
     multi_hop_abstract: 0.35  # Reasoning queries
     multi_hop_specific: 0.25  # Multi-context queries
+
+# Multi-Hop Query Generation Configuration
+multihop:
+  # Number of multi-hop queries to generate
+  test_size: 20
+
+  # Language for query generation
+  language: "id"  # Bahasa Indonesia
+
+  # Knowledge graph configuration
+  overlap_threshold: 0.6  # Minimum keyphrase overlap for relationships (0.0-1.0)
+
+  # Document chunking configuration
+  chunk_size:
+    min: 300   # Minimum tokens per chunk
+    max: 1000  # Maximum tokens per chunk
+
+  # Keyphrase extraction configuration
+  max_keyphrases: 10  # Maximum keyphrases to extract per document
+
+  # DKI Jakarta Provincial Government Worker Personas
+  # These personas represent different roles in the provincial government
+  personas:
+    - name: "Perencana Pembangunan Daerah"
+      role: "Staf Bappeda DKI Jakarta yang bertanggung jawab atas penyusunan RPJMD dan RKPD"
+
+    - name: "Analis Anggaran Daerah"
+      role: "Pegawai Badan Pengelola Keuangan Daerah yang menganalisis alokasi anggaran pembangunan"
+
+    - name: "Kepala Seksi Perencanaan"
+      role: "Pejabat di Bappeda yang mengawasi implementasi kebijakan perencanaan daerah"
+
+    - name: "Peneliti Kebijakan Publik"
+      role: "Staff ahli yang mengevaluasi efektivitas peraturan daerah dan program pembangunan"
+
+    - name: "Koordinator Program Pembangunan"
+      role: "Pengelola program yang mengoordinasikan pelaksanaan berbagai kegiatan pembangunan daerah"
 
 # Output Configuration
 output:

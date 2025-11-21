@@ -3388,7 +3388,7 @@ requires-dist = [
     { name = "openai", specifier = ">=1.0.0" },
     { name = "pandas", specifier = ">=2.0.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
-    { name = "ragas", specifier = ">=0.2.0" },
+    { name = "ragas", specifier = ">=0.3.9" },
     { name = "rapidfuzz", specifier = ">=3.14.3" },
 ]
 provides-extras = ["dev"]

@@ -240,4 +240,4 @@ synthetic_testset.csv
 *.cleared
 
 # Execution logs
-execution-log.txt
+# execution-log.txt

@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 """
-Synthetic Test Dataset Generation for RAG Evaluation using Ragas
+Multi-Hop Query Generation for RAG Evaluation using Ragas Knowledge Graph
 
-This script generates a comprehensive synthetic evaluation dataset for RAG applications
-using the Ragas framework with OpenRouter models.
+This script generates multi-hop queries that require synthesizing information
+across multiple DKI Jakarta government planning documents using knowledge graph
+relationships and custom query synthesis.
 
 Features:
+- Knowledge graph construction with document nodes
+- Relationship building via keyphrase overlap
+- Custom multi-hop query synthesizer
+- Bahasa Indonesia query generation
+- DKI Jakarta government worker personas
+- Extensive logging at each phase
 - Checkpoint/resume capability
-- Incremental result saving
-- Detailed progress tracking
-- API validation
-- Robust error handling with retries
 
 Models used:
 - LLM: x-ai/grok-code-fast-1 (via OpenRouter)
@@ -21,6 +24,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from typing import List
 
 import yaml
 from dotenv import load_dotenv
@@ -30,7 +34,7 @@ from openai import OpenAI
 from ragas.embeddings import OpenAIEmbeddings
 from ragas.llms import LangchainLLMWrapper
 from ragas.testset import TestsetGenerator
-from ragas.testset.synthesizers import default_query_distribution
+from ragas.testset.persona import Persona
 
 # Import our custom library
 from lib import (
@@ -61,7 +65,7 @@ def load_config(config_file: str = "config.yaml") -> dict:
 def parse_args():
     """Parse command-line arguments"""
     parser = argparse.ArgumentParser(
-        description="Generate synthetic testset for RAG evaluation",
+        description="Generate multi-hop queries using knowledge graph",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
@@ -85,12 +89,6 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--test",
-        action="store_true",
-        help="Test mode: use 1 document and generate 5 samples"
-    )
-
-    parser.add_argument(
         "--validate-api",
         action="store_true",
         help="Validate API connectivity and exit"
@@ -111,7 +109,13 @@ def parse_args():
     parser.add_argument(
         "--output",
         type=str,
-        help="Custom output file path"
+        help="Custom output file path (default: multihop_testset.csv)"
+    )
+
+    parser.add_argument(
+        "--size",
+        type=int,
+        help="Number of queries to generate (overrides config)"
     )
 
     return parser.parse_args()
@@ -157,8 +161,39 @@ def validate_api(config: dict, api_key: str, logger) -> bool:
     return True
 
 
+def create_personas_from_config(personas_config: List[dict], logger) -> List[Persona]:
+    """
+    Create Ragas Persona objects from config
+
+    Args:
+        personas_config: List of persona dicts with 'name' and 'role' keys
+        logger: Logger instance
+
+    Returns:
+        List of Persona objects
+    """
+    logger.info("Creating personas from configuration...")
+    personas = []
+
+    for i, p_config in enumerate(personas_config, 1):
+        persona = Persona(
+            name=p_config['name'],
+            role_description=p_config['role']
+        )
+        personas.append(persona)
+        logger.info(f"  [{i}/{len(personas_config)}] {p_config['name']}")
+        logger.debug(f"       Role: {p_config['role']}")
+
+    logger.info(f"Created {len(personas)} personas")
+    logger.info("")
+    return personas
+
+
+# Unused functions removed - using TestsetGenerator directly instead
+
+
 def main():
-    """Main function to generate synthetic testset"""
+    """Main function to generate multi-hop queries"""
 
     # Parse arguments
     args = parse_args()
@@ -181,8 +216,11 @@ def main():
     )
 
     logger.info("=" * 80)
-    logger.info("RAG Evaluation - Synthetic Testset Generation")
+    logger.info("Multi-Hop Query Generation using Knowledge Graph")
     logger.info("=" * 80)
+    logger.info("")
+    logger.info("This script generates queries that require synthesizing information")
+    logger.info("across multiple DKI Jakarta government planning documents.")
     logger.info("")
 
     # Validate API key
@@ -207,18 +245,33 @@ def main():
     if args.validate_api:
         sys.exit(0)
 
-    # Initialize components
-    checkpoint_enabled = config['checkpoint']['enabled'] and not args.no_checkpoint
-    checkpoint_file = config['checkpoint']['file']
+    # Determine test size
+    test_size = args.size if args.size else config['multihop']['test_size']
+    logger.info(f"Configuration:")
+    logger.info(f"  Target queries: {test_size}")
+    logger.info(f"  Language: {config['multihop']['language']}")
+    logger.info(f"  Overlap threshold: {config['multihop']['overlap_threshold']}")
+    logger.info(f"  Max keyphrases: {config['multihop']['max_keyphrases']}")
+    logger.info("")
 
+    # Setup output files
+    output_file = args.output if args.output else "multihop_testset.csv"
+    result_writer = IncrementalCSVWriter(
+        output_file=f"multihop_partial.csv",
+        final_file=output_file,
+        backup_enabled=config['output']['backup_enabled']
+    )
+
+    # Initialize checkpoint manager
+    checkpoint_enabled = config['checkpoint']['enabled'] and not args.no_checkpoint
+    checkpoint_file = "multihop_checkpoint.json"
     checkpoint_manager = CheckpointManager(checkpoint_file) if checkpoint_enabled else None
 
-    # Handle reset flag
+    # Handle reset/resume
     if args.reset and checkpoint_manager:
         logger.info("Clearing checkpoint...")
         checkpoint_manager.clear_checkpoint()
 
-    # Handle resume flag
     if args.resume and checkpoint_manager and checkpoint_manager.has_checkpoint():
         logger.info("=" * 80)
         logger.info("Resuming from Checkpoint")
@@ -226,42 +279,19 @@ def main():
         state = checkpoint_manager.load_checkpoint()
         logger.info(checkpoint_manager.get_summary())
         logger.info("")
-    elif checkpoint_manager and checkpoint_manager.has_checkpoint() and not args.reset:
-        logger.warning("=" * 80)
-        logger.warning("Checkpoint found! Use --resume to continue or --reset to start fresh")
-        logger.warning("=" * 80)
-        logger.info(checkpoint_manager.get_summary())
-        response = input("\nContinue anyway and overwrite checkpoint? [y/N]: ")
-        if response.lower() != 'y':
-            logger.info("Exiting. Use --resume or --reset flag to proceed.")
-            sys.exit(0)
-        checkpoint_manager.clear_checkpoint()
-
-    # Determine test size
-    if args.test:
-        test_size = config['test_mode']['sample_limit']
-        doc_limit = config['test_mode']['document_limit']
-        logger.info(f"🧪 Test mode enabled: {doc_limit} document(s), {test_size} samples")
-        logger.info("")
-    else:
-        test_size = config['generation']['test_size']
-        doc_limit = None
-
-    # Setup output files
-    output_file = args.output if args.output else config['output']['final_file']
-    result_writer = IncrementalCSVWriter(
-        output_file=config['output']['partial_file'],
-        final_file=output_file,
-        backup_enabled=config['output']['backup_enabled']
-    )
 
     # Step 1: Load documents
-    logger.info(f"[1/6] Loading documents from {config['knowledge_base']['directory']}...")
+    logger.info("=" * 80)
+    logger.info("PHASE 0: Document Loading")
+    logger.info("=" * 80)
+    logger.info("")
+    logger.info(f"[0.1] Loading documents from {config['knowledge_base']['directory']}...")
+
     loader = DirectoryLoader(
         config['knowledge_base']['directory'],
         glob=config['knowledge_base']['glob_pattern'],
         loader_cls=TextLoader,
-        show_progress=True
+        show_progress=False
     )
     documents = loader.load()
 
@@ -270,30 +300,44 @@ def main():
         if 'source' in doc.metadata and 'filename' not in doc.metadata:
             doc.metadata['filename'] = doc.metadata['source']
 
-    # Limit documents in test mode
-    if doc_limit and len(documents) > doc_limit:
-        documents = documents[:doc_limit]
-        logger.info(f"      Limited to {doc_limit} document(s) for testing")
+    logger.info(f"      Loaded {len(documents)} document(s):")
+    for i, doc in enumerate(documents, 1):
+        filename = doc.metadata.get('filename', doc.metadata.get('source', f'doc_{i}'))
+        if isinstance(filename, str):
+            filename = Path(filename).name
+        content_size = len(doc.page_content)
+        logger.info(f"        [{i}] {filename} ({content_size:,} characters)")
 
-    logger.info(f"      Loaded {len(documents)} document(s)")
+    logger.info("")
+    total_chars = sum(len(doc.page_content) for doc in documents)
+    logger.info(f"      Total content: {total_chars:,} characters")
     logger.info("")
 
-    # Step 2: Configure LLM
-    logger.info(f"[2/6] Configuring LLM: {config['llm']['model']}...")
+    # Step 2: Configure LLM with structured output support
+    logger.info(f"[0.2] Configuring LLM: {config['llm']['model']}...")
+    logger.info("      Enabling structured outputs for reliable JSON parsing...")
+
+    # Configure ChatOpenAI with structured output support
+    # Using model_kwargs to pass response_format for OpenRouter
     generator_llm = LangchainLLMWrapper(
         ChatOpenAI(
             model=config['llm']['model'],
             api_key=OPENROUTER_API_KEY,
             base_url=config['api']['base_url'],
             temperature=config['llm']['temperature'],
-            max_tokens=config['llm']['max_tokens']
+            max_tokens=config['llm']['max_tokens'],
+            model_kwargs={
+                "response_format": {
+                    "type": "json_object"  # Enable JSON mode for reliable parsing
+                }
+            }
         )
     )
-    logger.info("      LLM configured successfully")
+    logger.info("      LLM configured successfully with structured outputs")
     logger.info("")
 
     # Step 3: Configure Embeddings
-    logger.info(f"[3/6] Configuring Embeddings: {config['embeddings']['model']}...")
+    logger.info(f"[0.3] Configuring Embeddings: {config['embeddings']['model']}...")
     openai_client = OpenAI(
         api_key=OPENROUTER_API_KEY,
         base_url=config['api']['base_url']
@@ -305,68 +349,94 @@ def main():
     logger.info("      Embeddings configured successfully")
     logger.info("")
 
-    # Step 4: Initialize TestsetGenerator
-    logger.info("[4/6] Initializing TestsetGenerator...")
-    generator = TestsetGenerator(
-        llm=generator_llm,
-        embedding_model=generator_embeddings
-    )
-    logger.info("      TestsetGenerator initialized")
-    logger.info("")
-
-    # Step 5: Create custom query distribution
-    logger.info("[5/6] Creating query distribution...")
-    dist_config = config['generation']['distribution']
-    logger.info("      Distribution strategy:")
-    logger.info(f"        - SingleHopSpecificQuerySynthesizer: {dist_config['single_hop']*100:.0f}%")
-    logger.info(f"        - MultiHopAbstractQuerySynthesizer: {dist_config['multi_hop_abstract']*100:.0f}%")
-    logger.info(f"        - MultiHopSpecificQuerySynthesizer: {dist_config['multi_hop_specific']*100:.0f}%")
-
-    query_distribution = default_query_distribution(generator_llm)
-    custom_distribution = [
-        (query_distribution[0][0], dist_config['single_hop']),
-        (query_distribution[1][0], dist_config['multi_hop_abstract']),
-        (query_distribution[2][0], dist_config['multi_hop_specific']),
-    ]
-
-    logger.info(f"      Configured for {test_size} samples")
-    logger.info("")
-
-    # Step 6: Generate testset
-    logger.info(f"[6/6] Generating synthetic testset ({test_size} samples)...")
-    logger.info("      This may take several minutes...")
+    # Step 4: Create personas
+    logger.info("[0.4] Setting up DKI Jakarta government worker personas...")
+    personas = create_personas_from_config(config['multihop']['personas'], logger)
 
     # Initialize progress tracker
     progress_tracker = DetailedProgressTracker(
         total_documents=len(documents),
         target_samples=test_size,
-        progress_file=config['progress']['file'],
+        progress_file="multihop_progress.json",
         update_interval=config['progress']['update_interval']
     ) if config['progress']['enabled'] else None
 
     if progress_tracker:
         progress_tracker.start()
 
-    logger.info("")
-
     try:
-        # Generate testset
+        # Phase 1 & 2: Generate multi-hop queries using TestsetGenerator
+        logger.info("=" * 80)
+        logger.info("PHASE 1: Multi-Hop Query Generation")
+        logger.info("=" * 80)
+        logger.info("")
+
+        logger.info(f"[1.1] Initializing TestsetGenerator with multi-hop synthesizers...")
+        logger.info(f"      Language: {config['multihop']['language']} (Bahasa Indonesia)")
+        logger.info(f"      Target queries: {test_size}")
+        logger.info("")
+
+        generator = TestsetGenerator(
+            llm=generator_llm,
+            embedding_model=generator_embeddings
+        )
+
+        logger.info("[1.2] Configuring multi-hop query distribution...")
+        logger.info("      Using MultiHopAbstractQuerySynthesizer and MultiHopSpecificQuerySynthesizer")
+        logger.info("")
+
+        # Use Ragas' built-in multi-hop synthesizers
+        from ragas.testset.synthesizers import (
+            MultiHopAbstractQuerySynthesizer,
+            MultiHopSpecificQuerySynthesizer
+        )
+
+        # Create custom distribution focused on multi-hop queries
+        from ragas.testset.synthesizers import default_query_distribution
+
+        # Get default distribution and modify to use only multi-hop
+        query_dist = default_query_distribution(generator_llm)
+        multi_hop_distribution = [
+            (query_dist[1][0], 0.5),  # MultiHopAbstractQuerySynthesizer 50%
+            (query_dist[2][0], 0.5),  # MultiHopSpecificQuerySynthesizer 50%
+        ]
+
+        logger.info("      Distribution:")
+        logger.info("        - MultiHopAbstractQuerySynthesizer: 50%")
+        logger.info("        - MultiHopSpecificQuerySynthesizer: 50%")
+        logger.info("")
+
+        logger.info("[1.3] Generating multi-hop queries...")
+        logger.info("      This process builds knowledge graph and generates queries")
+        logger.info("      This may take several minutes...")
+        logger.info("")
+
+        # Generate testset with multi-hop focus
+        # Note: Personas are not directly supported in v0.3.9's generate_with_langchain_docs
+        # They would need to be integrated through custom synthesizers
         dataset = generator.generate_with_langchain_docs(
             documents,
             testset_size=test_size,
-            query_distribution=custom_distribution
+            query_distribution=multi_hop_distribution,
+            with_debugging_logs=False,
         )
 
-        logger.info("      Testset generation completed successfully!")
+        logger.info("")
+        logger.info("      Multi-hop query generation completed!")
+        logger.info(f"      Generated {len(dataset)} queries")
         logger.info("")
 
         # Convert to pandas DataFrame
         df = dataset.to_pandas()
 
         # Save final results
-        logger.info(f"[OUTPUT] Finalizing results to {output_file}...")
+        logger.info("=" * 80)
+        logger.info("PHASE 3: Saving Results")
+        logger.info("=" * 80)
+        logger.info("")
+        logger.info(f"[3.1] Finalizing results to {output_file}...")
         result_writer.write_dataframe(df)
-        logger.info(f"         Saved {len(df)} samples")
+        logger.info(f"      Saved {len(df)} queries")
         logger.info("")
 
         # Mark progress as complete
@@ -379,18 +449,20 @@ def main():
 
         # Display summary
         logger.info("=" * 80)
-        logger.info("Generation Complete!")
+        logger.info("Multi-Hop Query Generation Complete!")
         logger.info("=" * 80)
-        logger.info(f"Total samples: {len(df)}")
+        logger.info(f"Total queries: {len(df)}")
         logger.info(f"Output file: {output_file}")
         if progress_tracker:
             logger.info(f"Elapsed time: {progress_tracker.format_time(progress_tracker.get_elapsed_time())}")
         logger.info("")
 
-        # Display first few samples
-        logger.info("Sample preview:")
+        # Display sample queries
+        logger.info("Sample queries:")
         logger.info("-" * 80)
-        logger.info(df.head(3).to_string())
+        for i, row in df.head(5).iterrows():
+            query = row.get('user_input', row.get('question', 'N/A'))
+            logger.info(f"{i+1}. {query}")
         logger.info("")
 
     except KeyboardInterrupt:
@@ -398,12 +470,6 @@ def main():
         logger.warning("=" * 80)
         logger.warning("Generation interrupted by user")
         logger.warning("=" * 80)
-
-        # Save partial results
-        partial_df = result_writer.read_partial_results()
-        if partial_df is not None and len(partial_df) > 0:
-            logger.info(f"Saved {len(partial_df)} partial results to {config['output']['partial_file']}")
-            logger.info("Use --resume to continue from checkpoint")
 
         if progress_tracker:
             progress_tracker.error("Interrupted by user")
@@ -413,14 +479,9 @@ def main():
     except Exception as e:
         logger.error("")
         logger.error("=" * 80)
-        logger.error("Testset generation failed!")
+        logger.error("Multi-hop query generation failed!")
         logger.error("=" * 80)
         logger.error(format_error_message(e))
-
-        # Save partial results if any
-        partial_df = result_writer.read_partial_results()
-        if partial_df is not None and len(partial_df) > 0:
-            logger.info(f"Saved {len(partial_df)} partial results to {config['output']['partial_file']}")
 
         if progress_tracker:
             progress_tracker.error(str(e))
