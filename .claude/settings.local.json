@@ -15,7 +15,9 @@
       "Bash(uv sync:*)",
       "Bash(source .venv/bin/activate)",
       "Bash(python3 -c:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(python3:*)",
+      "Bash(results/test_sample.jsonl)"
     ],
     "deny": [],
     "ask": []

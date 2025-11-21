@@ -130,3 +130,47 @@ rag_executor:
   checkpoint_enabled: true
   checkpoint_file: "executor_checkpoint.json"
   checkpoint_interval: 10  # Save every N queries
+
+# Ragas Evaluation Configuration
+ragas_evaluation:
+  # Input file (output from RAG executor)
+  input_file: "./results/eval_results.jsonl"
+
+  # Output configuration
+  output_dir: "./results"
+  detailed_results_file: "ragas_eval_detailed.jsonl"
+  report_file: "ragas_eval_report.md"
+
+  # Evaluation metrics to use
+  # Available: context_precision, context_recall, context_entity_recall,
+  #            answer_relevancy, faithfulness, answer_correctness,
+  #            answer_similarity, context_utilization
+  metrics:
+    - context_precision
+    - context_recall
+    - context_entity_recall
+    - answer_relevancy
+    - faithfulness
+    - answer_correctness
+    - answer_similarity
+    - context_utilization
+
+  # Batch configuration
+  batch_size: 10  # Number of samples to evaluate at once
+
+  # Timeout configuration
+  llm_timeout_seconds: 300  # LLM request timeout (5 minutes)
+  embeddings_timeout_seconds: 180  # Embeddings request timeout (3 minutes)
+
+  # Checkpoint configuration
+  checkpoint_enabled: true
+  checkpoint_file: "ragas_checkpoint.json"
+  checkpoint_interval: 10  # Save every N samples
+
+  # Error handling
+  max_retries: 3
+  retry_delay_seconds: 5
+  continue_on_error: true  # Continue evaluation even if some samples fail
+
+  # Progress tracking
+  show_progress: true
