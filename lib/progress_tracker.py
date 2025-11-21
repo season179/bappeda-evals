@@ -159,7 +159,7 @@ class DetailedProgressTracker:
             percentage = (self.samples_generated / self.target_samples) * 100
 
         filled = int(width * percentage / 100)
-        bar = '█' * filled + '░' * (width - filled)
+        bar = '#' * filled + '-' * (width - filled)
 
         return f"[{bar}] {percentage:.1f}%"
 
@@ -177,7 +177,7 @@ class DetailedProgressTracker:
         phase_str = f"Phase: {self.current_phase}" if self.current_phase else "Phase: Initializing"
         doc_str = f"Doc: {self.current_document or 'N/A'} ({self.documents_processed}/{self.total_documents})"
         samples_str = f"Samples: {self.samples_generated}/{self.target_samples}"
-        time_str = f"⏱ {elapsed} | ETA: ~{eta}"
+        time_str = f"Time: {elapsed} | ETA: ~{eta}"
 
         return f"[{phase_str}] {doc_str} | {samples_str} | {time_str}"
 

@@ -42,6 +42,7 @@ from lib import (
     CheckpointManager,
     DetailedProgressTracker,
     IncrementalCSVWriter,
+    MetadataCache,
     setup_logger,
 )
 from lib.error_handlers import format_error_message
@@ -280,41 +281,105 @@ def main():
         logger.info(checkpoint_manager.get_summary())
         logger.info("")
 
-    # Step 1: Load documents
+    # Step 1: Load documents (using cached metadata if available)
     logger.info("=" * 80)
     logger.info("PHASE 0: Document Loading")
     logger.info("=" * 80)
     logger.info("")
-    logger.info(f"[0.1] Loading documents from {config['knowledge_base']['directory']}...")
 
-    loader = DirectoryLoader(
-        config['knowledge_base']['directory'],
-        glob=config['knowledge_base']['glob_pattern'],
-        loader_cls=TextLoader,
-        show_progress=False
+    # Check for cached metadata
+    metadata_cache = MetadataCache(
+        cache_dir=Path('.cache/metadata'),
+        source_dir=Path(config['knowledge_base']['directory'])
     )
-    documents = loader.load()
 
-    # Ensure metadata includes filename
-    for doc in documents:
-        if 'source' in doc.metadata and 'filename' not in doc.metadata:
-            doc.metadata['filename'] = doc.metadata['source']
+    cache_stats = metadata_cache.get_cache_stats()
 
-    logger.info(f"      Loaded {len(documents)} document(s):")
-    for i, doc in enumerate(documents, 1):
-        filename = doc.metadata.get('filename', doc.metadata.get('source', f'doc_{i}'))
-        if isinstance(filename, str):
-            filename = Path(filename).name
-        content_size = len(doc.page_content)
-        logger.info(f"        [{i}] {filename} ({content_size:,} characters)")
+    if cache_stats['cached_files'] > 0:
+        logger.info(f"[0.1] Loading documents from metadata cache...")
+        logger.info(f"      Cache directory: {metadata_cache.cache_dir}")
+        logger.info(f"      Cached files: {cache_stats['cached_files']}")
+        logger.info(f"      Cache size: {cache_stats['total_cache_size'] / 1024:.1f} KB")
+        logger.info("")
 
-    logger.info("")
-    total_chars = sum(len(doc.page_content) for doc in documents)
-    logger.info(f"      Total content: {total_chars:,} characters")
-    logger.info("")
+        # Load metadata documents
+        metadata_docs = metadata_cache.load_all()
+
+        if len(metadata_docs) == 0:
+            logger.error("No metadata documents found in cache!")
+            logger.error("Please run: python extract_metadata.py")
+            sys.exit(1)
+
+        logger.info(f"      Loaded {len(metadata_docs)} metadata document(s):")
+        total_summary_size = 0
+        total_original_size = 0
+
+        for i, meta_doc in enumerate(metadata_docs, 1):
+            summary_size = len(meta_doc.summary)
+            total_summary_size += summary_size
+            total_original_size += meta_doc.char_count
+            memory_est = meta_doc.get_size_estimate()
+
+            logger.info(
+                f"        [{i}] {meta_doc.filename}\n"
+                f"             Original: {meta_doc.char_count:,} chars, "
+                f"Summary: {summary_size:,} chars, "
+                f"Memory: ~{memory_est//1024}KB"
+            )
+
+        logger.info("")
+        logger.info(f"      Total original size: {total_original_size:,} characters ({total_original_size/1024/1024:.1f} MB)")
+        logger.info(f"      Total summary size: {total_summary_size:,} characters ({total_summary_size/1024:.1f} KB)")
+        logger.info(f"      Memory reduction: ~{100 * (1 - total_summary_size/total_original_size):.1f}%")
+        logger.info("")
+
+        # Convert to LangChain documents using summaries
+        logger.info("[0.2] Converting to LangChain documents...")
+        documents = [meta_doc.to_langchain_document(use_summary=True) for meta_doc in metadata_docs]
+        logger.info(f"      Converted {len(documents)} documents")
+        logger.info("      Using summaries for knowledge graph (low memory mode)")
+        logger.info("")
+
+    else:
+        logger.warning("No cached metadata found!")
+        logger.warning("")
+        logger.warning("To use disk-based processing with low memory usage:")
+        logger.warning("  1. Run: python extract_metadata.py")
+        logger.warning("  2. Then re-run this script")
+        logger.warning("")
+        logger.warning("Falling back to loading full documents (high memory usage)...")
+        logger.warning("")
+
+        logger.info(f"[0.1] Loading full documents from {config['knowledge_base']['directory']}...")
+
+        loader = DirectoryLoader(
+            config['knowledge_base']['directory'],
+            glob=config['knowledge_base']['glob_pattern'],
+            loader_cls=TextLoader,
+            show_progress=False
+        )
+        documents = loader.load()
+
+        # Ensure metadata includes filename
+        for doc in documents:
+            if 'source' in doc.metadata and 'filename' not in doc.metadata:
+                doc.metadata['filename'] = doc.metadata['source']
+
+        logger.info(f"      Loaded {len(documents)} document(s):")
+        for i, doc in enumerate(documents, 1):
+            filename = doc.metadata.get('filename', doc.metadata.get('source', f'doc_{i}'))
+            if isinstance(filename, str):
+                filename = Path(filename).name
+            content_size = len(doc.page_content)
+            logger.info(f"        [{i}] {filename} ({content_size:,} characters)")
+
+        logger.info("")
+        total_chars = sum(len(doc.page_content) for doc in documents)
+        logger.info(f"      Total content: {total_chars:,} characters")
+        logger.info("")
 
     # Step 2: Configure LLM with structured output support
-    logger.info(f"[0.2] Configuring LLM: {config['llm']['model']}...")
+    logger.info(f"[0.3] Configuring LLM: {config['llm']['model']}...")
     logger.info("      Enabling structured outputs for reliable JSON parsing...")
 
     # Configure ChatOpenAI with structured output support
@@ -337,7 +402,7 @@ def main():
     logger.info("")
 
     # Step 3: Configure Embeddings
-    logger.info(f"[0.3] Configuring Embeddings: {config['embeddings']['model']}...")
+    logger.info(f"[0.4] Configuring Embeddings: {config['embeddings']['model']}...")
     openai_client = OpenAI(
         api_key=OPENROUTER_API_KEY,
         base_url=config['api']['base_url']
@@ -350,7 +415,7 @@ def main():
     logger.info("")
 
     # Step 4: Create personas
-    logger.info("[0.4] Setting up DKI Jakarta government worker personas...")
+    logger.info("[0.5] Setting up DKI Jakarta government worker personas...")
     personas = create_personas_from_config(config['multihop']['personas'], logger)
 
     # Initialize progress tracker
@@ -435,8 +500,12 @@ def main():
         logger.info("=" * 80)
         logger.info("")
         logger.info(f"[3.1] Finalizing results to {output_file}...")
+
+        # Write to both partial and final files
         result_writer.write_dataframe(df)
-        logger.info(f"      Saved {len(df)} queries")
+        final_df = result_writer.finalize()
+
+        logger.info(f"      Saved {len(df)} queries to {output_file}")
         logger.info("")
 
         # Mark progress as complete

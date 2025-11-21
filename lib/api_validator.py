@@ -65,7 +65,7 @@ class APIValidator:
                 self.logger.error(f"  {service}: {error}")
             return False, errors
 
-        self.logger.info("✅ API validation successful!")
+        self.logger.info("API validation successful!")
         return True, {}
 
     def _test_llm(self) -> Tuple[bool, str]:
@@ -90,30 +90,30 @@ class APIValidator:
             response = llm.invoke("Say 'test'")
 
             if response and response.content:
-                self.logger.info(f"  ✅ LLM test successful")
+                self.logger.info(f"  LLM test successful")
                 return True, ""
 
-            self.logger.warning("  ⚠️  LLM returned empty response")
+            self.logger.warning("  LLM returned empty response")
             return False, "LLM returned empty response"
 
         except AuthenticationError as e:
             error_msg = self._format_auth_error(str(e))
-            self.logger.error(f"  ❌ Authentication failed: {error_msg}")
+            self.logger.error(f"  Authentication failed: {error_msg}")
             return False, error_msg
 
         except NotFoundError as e:
             error_msg = f"Model '{self.llm_model}' not found or not accessible"
-            self.logger.error(f"  ❌ {error_msg}")
+            self.logger.error(f"  {error_msg}")
             return False, error_msg
 
         except RateLimitError as e:
             error_msg = "Rate limit exceeded. Wait before retrying."
-            self.logger.error(f"  ❌ {error_msg}")
+            self.logger.error(f"  {error_msg}")
             return False, error_msg
 
         except Exception as e:
             error_msg = f"LLM test failed: {str(e)}"
-            self.logger.error(f"  ❌ {error_msg}")
+            self.logger.error(f"  {error_msg}")
             return False, error_msg
 
     def _test_embeddings(self) -> Tuple[bool, str]:
@@ -139,30 +139,30 @@ class APIValidator:
 
             if response and response.data and len(response.data) > 0:
                 embedding_dim = len(response.data[0].embedding)
-                self.logger.info(f"  ✅ Embeddings test successful (dimension: {embedding_dim})")
+                self.logger.info(f"  Embeddings test successful (dimension: {embedding_dim})")
                 return True, ""
 
-            self.logger.warning("  ⚠️  Embeddings returned empty response")
+            self.logger.warning("  Embeddings returned empty response")
             return False, "Embeddings returned empty response"
 
         except AuthenticationError as e:
             error_msg = self._format_auth_error(str(e))
-            self.logger.error(f"  ❌ Authentication failed: {error_msg}")
+            self.logger.error(f"  Authentication failed: {error_msg}")
             return False, error_msg
 
         except NotFoundError as e:
             error_msg = f"Model '{self.embedding_model}' not found or not accessible"
-            self.logger.error(f"  ❌ {error_msg}")
+            self.logger.error(f"  {error_msg}")
             return False, error_msg
 
         except RateLimitError as e:
             error_msg = "Rate limit exceeded. Wait before retrying."
-            self.logger.error(f"  ❌ {error_msg}")
+            self.logger.error(f"  {error_msg}")
             return False, error_msg
 
         except Exception as e:
             error_msg = f"Embeddings test failed: {str(e)}"
-            self.logger.error(f"  ❌ {error_msg}")
+            self.logger.error(f"  {error_msg}")
             return False, error_msg
 
     def _format_auth_error(self, error_str: str) -> str:

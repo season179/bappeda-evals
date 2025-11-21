@@ -11,6 +11,7 @@ from .state_manager import CheckpointManager
 from .result_writer import IncrementalCSVWriter
 from .progress_tracker import DetailedProgressTracker
 from .api_validator import APIValidator
+from .metadata_loader import MetadataDocument, MetadataCache
 
 __all__ = [
     "setup_logger",
@@ -18,4 +19,6 @@ __all__ = [
     "IncrementalCSVWriter",
     "DetailedProgressTracker",
     "APIValidator",
+    "MetadataDocument",
+    "MetadataCache",
 ]

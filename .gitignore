@@ -58,7 +58,7 @@ cover/
 *.pot
 
 # Django stuff:
-*.log
+# *.log
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
@@ -241,3 +241,6 @@ synthetic_testset.csv
 
 # Execution logs
 # execution-log.txt
+
+*.csv
+*.json

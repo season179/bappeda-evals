@@ -11,10 +11,21 @@ This project provides tools for generating synthetic evaluation datasets for RAG
 - **Gemini 2.5 Flash**: High-performance LLM for generation (google/gemini-2.5-flash)
 - **Qwen3 Embedding 8B**: State-of-the-art embeddings (qwen/qwen3-embedding-8b)
 
+## Architecture
+
+**Two-Phase Disk-Based Processing** for handling large documents efficiently:
+
+1. **Phase 1**: Extract metadata (headlines, keyphrases, summaries) from documents one-at-a-time and cache to disk
+2. **Phase 2**: Build knowledge graph from lightweight summaries (28KB vs 12MB), preserving all cross-document relationships
+
+This approach achieves **99.8% memory reduction** while maintaining full knowledge graph capabilities.
+
 ## Features
 
 ### Multi-Hop Query Generation
-- **Knowledge Graph Construction**: Builds relationships between documents
+- **Disk-Based Processing**: 99.8% memory reduction (28KB vs 12MB) for large documents
+- **Two-Phase Architecture**: Metadata extraction + knowledge graph generation
+- **Knowledge Graph Construction**: Builds relationships across all documents
 - **Multi-Hop Synthesizers**: Generates queries requiring cross-document reasoning
   - MultiHopAbstractQuerySynthesizer (50%)
   - MultiHopSpecificQuerySynthesizer (50%)
@@ -22,6 +33,12 @@ This project provides tools for generating synthetic evaluation datasets for RAG
 - **Bahasa Indonesia**: Native language support
 - **Checkpoint/Resume**: Robust progress tracking and recovery
 - **Comprehensive Logging**: API calls, progress, and error tracking
+
+### Translation (Optional)
+- Translate English queries to Bahasa Indonesia
+- Preserves technical terms and regulatory names
+- Resume support with progress caching
+- Smart question-only translation (prevents LLM from answering)
 
 ### Credit Management
 - Check OpenRouter account balance
@@ -32,24 +49,29 @@ This project provides tools for generating synthetic evaluation datasets for RAG
 
 ```
 rag_eval_ragas/
-├── generate_multihop_testset.py  # Main testset generation script
+├── extract_metadata.py            # Phase 1: Extract & cache metadata
+├── generate_multihop_testset.py  # Phase 2: Generate queries from cache
+├── translate_user_input.py        # Optional: Translate queries to Indonesian
 ├── check_credits.py               # OpenRouter credit checker
 ├── config.yaml                    # Configuration file
-├── knowledge-files/               # Source documents (3 Perda files)
-│   ├── PERDA NO.1 TAHUN 2025.md
-│   ├── PERDA NO.2 TAHUN 2025.md
-│   └── PERDA NO.3 TAHUN 2025.md
+├── knowledge-files/               # Source documents (8 documents)
+│   ├── LKPJ 2024.md              # 8.8MB - Large document
+│   ├── RKPD 2025.md
+│   ├── RPJMD 2025-2029.md
+│   └── ...
+├── .cache/metadata/               # Cached metadata (139KB total)
+│   ├── LKPJ 2024.json            # Headlines, keyphrases, summaries
+│   └── ...
 ├── lib/                           # Utility modules
 │   ├── __init__.py
+│   ├── metadata_loader.py        # Disk-based document loading
 │   ├── api_validator.py          # API connectivity validation
-│   ├── error_handlers.py         # Error formatting
 │   ├── logger.py                 # Multi-file logging setup
 │   ├── progress_tracker.py       # Real-time progress tracking
 │   ├── result_writer.py          # Incremental CSV writing
 │   └── state_manager.py          # Checkpoint management
 ├── pyproject.toml                # Dependencies
-├── .env.example                  # Environment variable template
-└── README.md                     # This file
+└── .env.example                  # Environment variable template
 ```
 
 ## Setup
@@ -82,12 +104,26 @@ pip install -e .
 
 ## Usage
 
-### Check API Credits
-
-Before generating queries, check your OpenRouter credit balance:
+### Quick Start
 
 ```bash
-python check_credits.py
+# 1. Check your API credits (optional)
+uv run python check_credits.py
+
+# 2. Extract metadata from documents (run once, ~3 minutes)
+uv run python extract_metadata.py
+
+# 3. Generate multi-hop queries
+uv run python generate_multihop_testset.py --size 10
+
+# 4. Optional: Translate queries to Indonesian (if needed)
+uv run python translate_user_input.py --input multihop_testset.csv
+```
+
+### Step 1: Check API Credits (Optional)
+
+```bash
+uv run python check_credits.py
 ```
 
 **Output:**
@@ -101,120 +137,141 @@ Remaining Balance: $7.66
 ==================================================
 ```
 
-### Generate Multi-Hop Testset
+### Step 2: Extract Metadata (Run Once)
 
-Run the generation script:
+Extract and cache metadata from all documents:
 
 ```bash
-python generate_multihop_testset.py
+uv run python extract_metadata.py
+```
+
+**What this does:**
+- Processes documents one-at-a-time (low memory)
+- Extracts headlines, keyphrases, summaries
+- Creates chunk mappings for large documents
+- Caches to `.cache/metadata/` (~139KB for 8 documents)
+- **Run time**: ~3 minutes for 12MB of documents
+
+**Options:**
+```bash
+# Process specific document only
+uv run python extract_metadata.py --doc "LKPJ 2024.md"
+
+# Force re-extraction (clear cache)
+uv run python extract_metadata.py --force
+```
+
+### Step 3: Generate Multi-Hop Queries
+
+Generate queries using cached metadata:
+
+```bash
+uv run python generate_multihop_testset.py --size 10
 ```
 
 **Options:**
 ```bash
 # Validate API without generating
-python generate_multihop_testset.py --validate-api
+uv run python generate_multihop_testset.py --validate-api
 
 # Resume from last checkpoint
-python generate_multihop_testset.py --resume
-
-# Clear checkpoint and start fresh
-python generate_multihop_testset.py --reset
-
-# Custom configuration file
-python generate_multihop_testset.py --config custom_config.yaml
+uv run python generate_multihop_testset.py --resume
 
 # Generate specific number of queries (overrides config)
-python generate_multihop_testset.py --size 50
+uv run python generate_multihop_testset.py --size 50
 
 # Custom output file
-python generate_multihop_testset.py --output my_testset.csv
+uv run python generate_multihop_testset.py --output my_testset.csv
 
 # Enable verbose console logging
-python generate_multihop_testset.py --verbose
-
-# Disable checkpointing
-python generate_multihop_testset.py --no-checkpoint
+uv run python generate_multihop_testset.py --verbose
 ```
+
+### Optional: Translate Queries to Indonesian
+
+If the generated queries are in English (or mixed language), translate them to proper Bahasa Indonesia:
+
+```bash
+uv run python translate_user_input.py --input multihop_testset.csv --output multihop_translated.csv
+```
+
+**What this does:**
+- Translates `user_input` column from English to Indonesian
+- Preserves technical terms (RPJMD, RKPD, APBD, etc.)
+- Maintains question format and structure
+- Uses checkpoint/resume for interrupted translations
+- Caches translations in `translation_progress.json`
+
+**Features:**
+- **Smart translation**: Preserves regulatory names and technical terms
+- **Resume support**: Automatically resumes from last translated row
+- **Progress tracking**: Shows translation progress with caching
+- **Error recovery**: Falls back to original text on translation errors
+
+**Example translation:**
+```
+Input:  "What does RPJMD say about regional development?"
+Output: "Apa yang diatur dalam RPJMD tentang pembangunan daerah?"
+```
+
+**Note**: The script prevents the LLM from answering questions - it only translates the question structure.
 
 ### Expected Output
 
+**Phase 1 - Metadata Extraction:**
 ```
+[1/8] LKPJ 2024.md
+  Processing: LKPJ 2024.md
+    Size: 8,828,706 characters (8.42 MB)
+    Extracting headlines...
+    ✓ Extracted 6 headlines
+    Extracting keyphrases...
+    ✓ Extracted 15 keyphrases
+    Creating summary...
+    ✓ Created summary (3,520 characters)
+    Creating chunk mappings...
+    ✓ Created 241 chunk mappings
+    ✓ Cached to: .cache/metadata/LKPJ 2024.json
+
 ================================================================================
-Multi-Hop Query Generation using Knowledge Graph
+Metadata Extraction Complete
 ================================================================================
+Successful: 8
+Cache size: 139.1 KB
+```
 
-This script generates queries that require synthesizing information
-across multiple DKI Jakarta government planning documents.
-
-Configuration:
-  Target queries: 20
-  Language: id
-  Overlap threshold: 0.6
-  Max keyphrases: 10
-
+**Phase 2 - Query Generation:**
+```
 ================================================================================
 PHASE 0: Document Loading
 ================================================================================
 
-[0.1] Loading documents from ./knowledge-files...
-      Loaded 3 document(s):
-        [1] PERDA NO.1 TAHUN 2025.md (16,051 characters)
-        [2] PERDA NO.2 TAHUN 2025.md (13,320 characters)
-        [3] PERDA NO.3 TAHUN 2025.md (23,874 characters)
+[0.1] Loading documents from metadata cache...
+      Cache directory: .cache/metadata
+      Cached files: 8
+      Cache size: 139.1 KB
 
-      Total content: 53,245 characters
+      Total original size: 12,594,595 characters (12.0 MB)
+      Total summary size: 28,594 characters (27.9 KB)
+      Memory reduction: ~99.8%
 
-[0.2] Configuring LLM: google/gemini-2.5-flash...
-      Enabling structured outputs for reliable JSON parsing...
-      LLM configured successfully with structured outputs
-
-[0.3] Configuring Embeddings: qwen/qwen3-embedding-8b...
-      Embeddings configured successfully
-
-[0.4] Setting up DKI Jakarta government worker personas...
-      Created 5 personas
+[0.2] Converting to LangChain documents...
+      ✓ Converted 8 documents
+      Using summaries for knowledge graph (low memory mode)
 
 ================================================================================
 PHASE 1: Multi-Hop Query Generation
 ================================================================================
 
-[1.1] Initializing TestsetGenerator with multi-hop synthesizers...
-      Language: id (Bahasa Indonesia)
-      Target queries: 20
-
-[1.2] Configuring multi-hop query distribution...
-      Using MultiHopAbstractQuerySynthesizer and MultiHopSpecificQuerySynthesizer
-
-      Distribution:
-        - MultiHopAbstractQuerySynthesizer: 50%
-        - MultiHopSpecificQuerySynthesizer: 50%
-
-[1.3] Generating multi-hop queries...
-      This process builds knowledge graph and generates queries
-      This may take several minutes...
-
       Multi-hop query generation completed!
-      Generated 20 queries
-
-================================================================================
-PHASE 3: Saving Results
-================================================================================
-
-[3.1] Finalizing results to multihop_testset.csv...
-      Saved 20 queries
+      Generated 10 queries
 
 ================================================================================
 Multi-Hop Query Generation Complete!
 ================================================================================
-Total queries: 20
+Total queries: 10
 Output file: multihop_testset.csv
-Elapsed time: 5m 23s
-
-Sample queries:
---------------------------------------------------------------------------------
-1. Bagaimana ketentuan tentang pengelolaan keuangan daerah...
-2. Apa hubungan antara RPJMD dan pelaksanaan program pembangunan...
-...
+Elapsed time: 3m 16s
 ```
 
 ## Configuration
@@ -245,6 +302,11 @@ multihop:
   language: "id"              # Bahasa Indonesia
   overlap_threshold: 0.6      # Keyphrase overlap for relationships
   max_keyphrases: 10          # Keyphrases per document
+
+translation:
+  model: "x-ai/grok-code-fast-1"  # Model for translating queries
+  temperature: 0.3                # Lower = more consistent translations
+  max_tokens: 500                 # Max tokens for translation
 ```
 
 ### Output & Logging
@@ -308,6 +370,23 @@ Progress is also tracked in `multihop_progress.json` with real-time updates.
 
 ## Troubleshooting
 
+### Missing Metadata Cache
+```
+⚠ No cached metadata found!
+```
+**Solution**: Run metadata extraction first:
+```bash
+uv run python extract_metadata.py
+```
+
+### TypeError: 'NoneType' object is not iterable
+This error occurred in older versions when processing large documents. The new disk-based architecture fixes this by:
+- Extracting metadata one document at a time
+- Using summaries instead of full documents for knowledge graph
+- Reducing memory usage by 99.8%
+
+**Solution**: Use the two-phase workflow (extract metadata → generate queries).
+
 ### API Key Error
 ```
 OPENROUTER_API_KEY not found
@@ -342,10 +421,12 @@ AuthenticationError: Insufficient credits
 3. Or use a different API key
 
 ### Generation Interrupted
-If generation is interrupted, use `--resume` to continue from checkpoint:
+If query generation is interrupted, use `--resume`:
 ```bash
-python generate_multihop_testset.py --resume
+uv run python generate_multihop_testset.py --resume
 ```
+
+**Note**: Metadata extraction does not support resume. If interrupted, simply re-run - it will skip already cached files.
 
 ## Models
 

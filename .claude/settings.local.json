@@ -12,7 +12,10 @@
       "Bash(python:*)",
       "Bash(tee:*)",
       "Bash(chmod:*)",
-      "Bash(uv sync:*)"
+      "Bash(uv sync:*)",
+      "Bash(source .venv/bin/activate)",
+      "Bash(python3 -c:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

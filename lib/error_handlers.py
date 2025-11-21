@@ -22,7 +22,7 @@ def format_error_message(error: Exception) -> str:
     Returns:
         Formatted error message with guidance
     """
-    message = f"❌ {type(error).__name__}: {str(error)}\n"
+    message = f"{type(error).__name__}: {str(error)}\n"
 
     if isinstance(error, AuthenticationError):
         message += (

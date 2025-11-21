@@ -27,10 +27,17 @@ knowledge_base:
     - ".md"
     - ".txt"
 
+# Translation Configuration
+translation:
+  # Model for translating user_input from English to Indonesian
+  model: "x-ai/grok-code-fast-1"
+  temperature: 0.3  # Lower = more consistent translations
+  max_tokens: 500
+
 # Multi-Hop Query Generation Configuration
 multihop:
   # Number of multi-hop queries to generate
-  test_size: 20
+  test_size: 100  # Testing with small sample first
 
   # Language for query generation
   language: "id"  # Bahasa Indonesia
