@@ -1,47 +1,55 @@
-# RAG Evaluation with Ragas v0.2
+# RAG Evaluation Testset Generator
 
-Synthetic test dataset generation for RAG (Retrieval-Augmented Generation) applications using the Ragas framework and OpenRouter models.
+Multi-hop query generation and API credit management tools for RAG (Retrieval-Augmented Generation) evaluation using Ragas framework and OpenRouter.
 
 ## Overview
 
-This project generates a comprehensive synthetic evaluation dataset (Golden Quad format) for testing and evaluating RAG systems. It uses:
+This project provides tools for generating synthetic evaluation datasets for RAG systems focused on DKI Jakarta government planning documents. It uses:
 
-- **Ragas v0.2**: Advanced testset generation framework
+- **Ragas v0.3.9**: Advanced testset generation framework with multi-hop query support
 - **OpenRouter**: Unified API for accessing multiple LLM models
-- **Grok Code Fast 1**: High-performance LLM for generation (x-ai/grok-code-fast-1)
+- **Gemini 2.5 Flash**: High-performance LLM for generation (google/gemini-2.5-flash)
 - **Qwen3 Embedding 8B**: State-of-the-art embeddings (qwen/qwen3-embedding-8b)
 
 ## Features
 
-- **Multiple Query Types**: Generates 100 synthetic test samples with balanced distribution:
-  - 40% Single-hop specific queries (simple retrieval)
-  - 35% Multi-hop abstract queries (reasoning)
-  - 25% Multi-hop specific queries (multi-context retrieval)
+### Multi-Hop Query Generation
+- **Knowledge Graph Construction**: Builds relationships between documents
+- **Multi-Hop Synthesizers**: Generates queries requiring cross-document reasoning
+  - MultiHopAbstractQuerySynthesizer (50%)
+  - MultiHopSpecificQuerySynthesizer (50%)
+- **DKI Jakarta Personas**: Government worker roles for contextual queries
+- **Bahasa Indonesia**: Native language support
+- **Checkpoint/Resume**: Robust progress tracking and recovery
+- **Comprehensive Logging**: API calls, progress, and error tracking
 
-- **Golden Quad Format**: Each sample includes:
-  - `user_input`: The generated question
-  - `reference`: Ground truth answer
-  - `retrieved_contexts`: Relevant context passages
-
-- **Indonesian Language Support**: Optimized for Bappeda DKI Jakarta documents
+### Credit Management
+- Check OpenRouter account balance
+- Monitor API usage and remaining credits
+- Validate API connectivity before generation
 
 ## Project Structure
 
 ```
 rag_eval_ragas/
-├── knowledge-files/          # Source documents (8 Markdown files)
-│   ├── basis_pengetahuan_bappeda_dki_jakarta.md
+├── generate_multihop_testset.py  # Main testset generation script
+├── check_credits.py               # OpenRouter credit checker
+├── config.yaml                    # Configuration file
+├── knowledge-files/               # Source documents (3 Perda files)
 │   ├── PERDA NO.1 TAHUN 2025.md
 │   ├── PERDA NO.2 TAHUN 2025.md
-│   ├── PERDA NO.3 TAHUN 2025.md
-│   ├── RKPD 2025.md
-│   ├── RPJMD 2025-2029.md
-│   ├── RPJPD 2025-2045.md
-│   └── LKPJ 2024.md
-├── generate_testset.py       # Main generation script
-├── pyproject.toml            # Project dependencies
-├── .env.example              # Environment variable template
-└── README.md                 # This file
+│   └── PERDA NO.3 TAHUN 2025.md
+├── lib/                           # Utility modules
+│   ├── __init__.py
+│   ├── api_validator.py          # API connectivity validation
+│   ├── error_handlers.py         # Error formatting
+│   ├── logger.py                 # Multi-file logging setup
+│   ├── progress_tracker.py       # Real-time progress tracking
+│   ├── result_writer.py          # Incremental CSV writing
+│   └── state_manager.py          # Checkpoint management
+├── pyproject.toml                # Dependencies
+├── .env.example                  # Environment variable template
+└── README.md                     # This file
 ```
 
 ## Setup
@@ -74,144 +82,294 @@ pip install -e .
 
 ## Usage
 
-### Generate Testset
+### Check API Credits
+
+Before generating queries, check your OpenRouter credit balance:
+
+```bash
+python check_credits.py
+```
+
+**Output:**
+```
+==================================================
+OpenRouter Credit Balance
+==================================================
+Total Credits: $10.00
+Total Usage: $2.34
+Remaining Balance: $7.66
+==================================================
+```
+
+### Generate Multi-Hop Testset
 
 Run the generation script:
 
 ```bash
-python generate_testset.py
+python generate_multihop_testset.py
 ```
 
-The script will:
-1. Load all Markdown documents from `knowledge-files/`
-2. Configure OpenRouter models (Grok LLM + Qwen3 embeddings)
-3. Initialize Ragas TestsetGenerator
-4. Generate 100 synthetic test samples with custom distribution
-5. Save results to `synthetic_testset.csv`
-6. Display first 5 samples in the console
+**Options:**
+```bash
+# Validate API without generating
+python generate_multihop_testset.py --validate-api
+
+# Resume from last checkpoint
+python generate_multihop_testset.py --resume
+
+# Clear checkpoint and start fresh
+python generate_multihop_testset.py --reset
+
+# Custom configuration file
+python generate_multihop_testset.py --config custom_config.yaml
+
+# Generate specific number of queries (overrides config)
+python generate_multihop_testset.py --size 50
+
+# Custom output file
+python generate_multihop_testset.py --output my_testset.csv
+
+# Enable verbose console logging
+python generate_multihop_testset.py --verbose
+
+# Disable checkpointing
+python generate_multihop_testset.py --no-checkpoint
+```
 
 ### Expected Output
 
 ```
 ================================================================================
-Ragas v0.2 Synthetic Testset Generation for RAG Evaluation
+Multi-Hop Query Generation using Knowledge Graph
 ================================================================================
 
-[1/6] Loading documents from ./knowledge-files...
-      Loaded 8 markdown documents
+This script generates queries that require synthesizing information
+across multiple DKI Jakarta government planning documents.
 
-[2/6] Configuring LLM (Generator): x-ai/grok-code-fast-1...
-      LLM configured successfully
+Configuration:
+  Target queries: 20
+  Language: id
+  Overlap threshold: 0.6
+  Max keyphrases: 10
 
-[3/6] Configuring Embeddings: qwen/qwen3-embedding-8b...
+================================================================================
+PHASE 0: Document Loading
+================================================================================
+
+[0.1] Loading documents from ./knowledge-files...
+      Loaded 3 document(s):
+        [1] PERDA NO.1 TAHUN 2025.md (16,051 characters)
+        [2] PERDA NO.2 TAHUN 2025.md (13,320 characters)
+        [3] PERDA NO.3 TAHUN 2025.md (23,874 characters)
+
+      Total content: 53,245 characters
+
+[0.2] Configuring LLM: google/gemini-2.5-flash...
+      Enabling structured outputs for reliable JSON parsing...
+      LLM configured successfully with structured outputs
+
+[0.3] Configuring Embeddings: qwen/qwen3-embedding-8b...
       Embeddings configured successfully
 
-[4/6] Initializing TestsetGenerator...
-      TestsetGenerator initialized
-
-[5/6] Creating custom query distribution...
-      Distribution strategy:
-        - SingleHopSpecificQuerySynthesizer: 40% (simple queries)
-        - MultiHopAbstractQuerySynthesizer: 35% (reasoning queries)
-        - MultiHopSpecificQuerySynthesizer: 25% (multi-context queries)
-
-[6/6] Generating synthetic testset (100 samples)...
-      This may take several minutes depending on document size...
-
-      Testset generation completed successfully!
-
-[OUTPUT] Saving testset to synthetic_testset.csv...
-         Saved 100 samples to synthetic_testset.csv
+[0.4] Setting up DKI Jakarta government worker personas...
+      Created 5 personas
 
 ================================================================================
-Dataset Summary
+PHASE 1: Multi-Hop Query Generation
 ================================================================================
-Total samples generated: 100
-Columns: ['user_input', 'reference', 'retrieved_contexts']
 
-First 5 samples:
-[Sample data displayed here...]
+[1.1] Initializing TestsetGenerator with multi-hop synthesizers...
+      Language: id (Bahasa Indonesia)
+      Target queries: 20
+
+[1.2] Configuring multi-hop query distribution...
+      Using MultiHopAbstractQuerySynthesizer and MultiHopSpecificQuerySynthesizer
+
+      Distribution:
+        - MultiHopAbstractQuerySynthesizer: 50%
+        - MultiHopSpecificQuerySynthesizer: 50%
+
+[1.3] Generating multi-hop queries...
+      This process builds knowledge graph and generates queries
+      This may take several minutes...
+
+      Multi-hop query generation completed!
+      Generated 20 queries
 
 ================================================================================
-Generation Complete!
+PHASE 3: Saving Results
 ================================================================================
-Dataset saved to: synthetic_testset.csv
+
+[3.1] Finalizing results to multihop_testset.csv...
+      Saved 20 queries
+
+================================================================================
+Multi-Hop Query Generation Complete!
+================================================================================
+Total queries: 20
+Output file: multihop_testset.csv
+Elapsed time: 5m 23s
+
+Sample queries:
+--------------------------------------------------------------------------------
+1. Bagaimana ketentuan tentang pengelolaan keuangan daerah...
+2. Apa hubungan antara RPJMD dan pelaksanaan program pembangunan...
+...
 ```
 
 ## Configuration
 
-You can customize the generation by modifying these variables in `generate_testset.py`:
+Edit `config.yaml` to customize:
 
-```python
-TEST_SIZE = 100                              # Number of samples to generate
-OUTPUT_FILE = "synthetic_testset.csv"        # Output filename
-KNOWLEDGE_DIR = "./knowledge-files"          # Source documents directory
+### API Settings
+```yaml
+api:
+  base_url: "https://openrouter.ai/api/v1"
 ```
 
-To adjust query distribution, modify the weights in the `custom_distribution` list:
+### Model Configuration
+```yaml
+llm:
+  model: "google/gemini-2.5-flash"
+  temperature: 0.7
+  max_tokens: null
 
-```python
-custom_distribution = [
-    (query_distribution[0][0], 0.4),   # Single-hop: 40%
-    (query_distribution[1][0], 0.35),  # Multi-hop abstract: 35%
-    (query_distribution[2][0], 0.25),  # Multi-hop specific: 25%
-]
+embeddings:
+  model: "qwen/qwen3-embedding-8b"
+```
+
+### Generation Parameters
+```yaml
+multihop:
+  test_size: 20               # Number of queries to generate
+  language: "id"              # Bahasa Indonesia
+  overlap_threshold: 0.6      # Keyphrase overlap for relationships
+  max_keyphrases: 10          # Keyphrases per document
+```
+
+### Output & Logging
+```yaml
+output:
+  partial_file: "testset_partial.csv"
+  final_file: "testset_final.csv"
+  backup_enabled: true
+
+logging:
+  directory: "logs"
+  console_level: "INFO"
+  file_level: "DEBUG"
+  api_log_enabled: true
+  error_log_enabled: true
+```
+
+### Progress Tracking
+```yaml
+checkpoint:
+  enabled: true
+  file: "checkpoint.json"
+
+progress:
+  enabled: true
+  file: "progress_summary.json"
+  update_interval: 30  # seconds
 ```
 
 ## Output Format
 
-The generated CSV file contains:
+The generated CSV file (`multihop_testset.csv`) contains:
 
-- **user_input**: Synthetic question generated from the documents
-- **reference**: Ground truth answer/response
-- **retrieved_contexts**: List of relevant context passages
+- **user_input**: The generated question in Bahasa Indonesia
+- **reference**: Ground truth answer
+- **retrieved_contexts**: List of relevant context passages from documents
 
-This format is ideal for evaluating RAG systems using Ragas evaluation metrics.
+This format is compatible with Ragas evaluation metrics for RAG systems.
 
-## Models
+## DKI Jakarta Government Personas
 
-### LLM: Grok Code Fast 1
-- **Provider**: xAI (via OpenRouter)
-- **Model ID**: `x-ai/grok-code-fast-1`
-- **Context Window**: 256K tokens
-- **Pricing**: $0.20 per million tokens
-- **Use Case**: Question and answer generation
+The generator uses 5 authentic government worker personas:
 
-### Embeddings: Qwen3 Embedding 8B
-- **Provider**: Qwen (via OpenRouter)
-- **Model ID**: `qwen/qwen3-embedding-8b`
-- **Performance**: #1 on MTEB multilingual leaderboard (score: 70.58)
-- **Use Case**: Document embeddings and semantic search
+1. **Perencana Pembangunan Daerah** - Regional development planner at Bappeda
+2. **Analis Anggaran Daerah** - Budget analyst at financial management agency
+3. **Kepala Seksi Perencanaan** - Planning section head at Bappeda
+4. **Peneliti Kebijakan Publik** - Public policy researcher
+5. **Koordinator Program Pembangunan** - Development program coordinator
+
+These personas ensure queries are contextually relevant to actual government planning workflows.
+
+## Logging
+
+The system generates multiple log files in the `logs/` directory:
+
+- `main_YYYYMMDD_HHMMSS.log` - Main application log (DEBUG level)
+- `api_YYYYMMDD_HHMMSS.log` - All API calls and responses
+- `errors_YYYYMMDD_HHMMSS.log` - Errors and exceptions only
+
+Progress is also tracked in `multihop_progress.json` with real-time updates.
 
 ## Troubleshooting
 
 ### API Key Error
 ```
-ValueError: OPENROUTER_API_KEY not found
+OPENROUTER_API_KEY not found
 ```
-**Solution**: Ensure you've created `.env` file with a valid OpenRouter API key.
+**Solution**: Ensure `.env` file exists with valid OpenRouter API key.
 
-### Import Error
+### Model Not Found (404)
 ```
-ModuleNotFoundError: No module named 'ragas'
+NotFoundError: The specified model was not found
 ```
-**Solution**: Install dependencies using `uv sync` or `pip install -e .`
+**Solution**:
+1. Verify model name in `config.yaml`
+2. Check model availability at https://openrouter.ai/models
+3. Ensure your API key has access to the model
 
-### Generation Takes Too Long
-With 8 documents (>50K lines total), generation may take 10-30 minutes depending on:
-- API rate limits
-- Network speed
-- Model availability
+### Rate Limit Error (429)
+```
+RateLimitError: Rate limit exceeded
+```
+**Solution**:
+1. Wait a few minutes before retrying
+2. Reduce `test_size` in config.yaml
+3. Consider upgrading OpenRouter plan
 
-**Tip**: Start with a smaller `TEST_SIZE` (e.g., 10) to test the setup.
+### Insufficient Credits
+```
+AuthenticationError: Insufficient credits
+```
+**Solution**:
+1. Run `python check_credits.py` to check balance
+2. Add credits at https://openrouter.ai/credits
+3. Or use a different API key
+
+### Generation Interrupted
+If generation is interrupted, use `--resume` to continue from checkpoint:
+```bash
+python generate_multihop_testset.py --resume
+```
+
+## Models
+
+### LLM: Google Gemini 2.5 Flash
+- **Model ID**: `google/gemini-2.5-flash`
+- **Context Window**: 1M tokens
+- **Pricing**: Competitive rates via OpenRouter
+- **Use Case**: Question and answer generation with structured output support
+
+### Embeddings: Qwen3 Embedding 8B
+- **Model ID**: `qwen/qwen3-embedding-8b`
+- **Performance**: #1 on MTEB multilingual leaderboard (score: 70.58)
+- **Dimensions**: 8192
+- **Use Case**: Document embeddings and semantic similarity
 
 ## Resources
 
 - [Ragas Documentation](https://docs.ragas.io/)
 - [OpenRouter Documentation](https://openrouter.ai/docs)
-- [Grok Model Information](https://openrouter.ai/x-ai/grok-code-fast-1)
+- [Gemini Models](https://openrouter.ai/google/gemini-2.5-flash)
 - [Qwen3 Embeddings](https://openrouter.ai/qwen/qwen3-embedding-8b)
+- [OpenRouter API Keys](https://openrouter.ai/settings/keys)
+- [Check Credits](https://openrouter.ai/credits)
 
 ## License
 
-This project is for evaluating RAG systems with Bappeda DKI Jakarta planning and budgeting documents.
+This project is for evaluating RAG systems with Bappeda DKI Jakarta planning and regulatory documents (Peraturan Daerah).

@@ -8,8 +8,8 @@ api:
 
 # LLM Configuration (Generator)
 llm:
-  # model: "x-ai/grok-code-fast-1"
-  model: "google/gemini-2.5-flash"
+  model: "x-ai/grok-code-fast-1"
+  # model: "google/gemini-2.5-flash"
   temperature: 0.7
   max_tokens: null  # null = model default
 
@@ -26,17 +26,6 @@ knowledge_base:
   extensions:
     - ".md"
     - ".txt"
-
-# Testset Generation Configuration
-generation:
-  # Number of samples to generate
-  test_size: 3
-
-  # Query distribution (must sum to 1.0)
-  distribution:
-    single_hop: 0.40          # Simple queries
-    multi_hop_abstract: 0.35  # Reasoning queries
-    multi_hop_specific: 0.25  # Multi-context queries
 
 # Multi-Hop Query Generation Configuration
 multihop:
@@ -108,26 +97,6 @@ logging:
   api_log_enabled: true
   # Enable separate error log
   error_log_enabled: true
-
-# Error Handling Configuration
-error_handling:
-  # Maximum number of retries for transient errors
-  max_retries: 3
-  # Initial retry delay in seconds
-  initial_delay: 5.0
-  # Exponential backoff factor
-  backoff_factor: 2.0
-  # Maximum delay between retries in seconds
-  max_delay: 60.0
-  # Whether to skip failed documents and continue
-  skip_failed_documents: false
-
-# Test Mode Configuration
-test_mode:
-  # Number of documents to use in test mode (0 = use first document)
-  document_limit: 1
-  # Number of samples to generate in test mode
-  sample_limit: 5
 
 # API Validation Configuration
 validation:
