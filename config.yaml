@@ -124,7 +124,7 @@ rag_executor:
 
   # Output configuration
   results_dir: "./results"
-  output_file: "eval_results.csv"
+  output_file: "eval_results.jsonl"
 
   # Checkpoint configuration
   checkpoint_enabled: true

@@ -6,7 +6,6 @@ and captures results for Ragas evaluation
 """
 
 import argparse
-import csv
 import json
 import os
 import sys
@@ -113,32 +112,9 @@ def create_results_directory(results_dir: str):
     Path(results_dir).mkdir(parents=True, exist_ok=True)
 
 
-def initialize_results_file(output_path: str):
-    """
-    Initialize CSV file with headers
-
-    Args:
-        output_path: Path to output CSV file
-    """
-    headers = [
-        'query_id',
-        'user_input',
-        'reference_contexts',
-        'reference',
-        'actual_contexts',
-        'actual_answer',
-        'tool_calls_json',
-        'api_latency_ms',
-        'status',
-        'error'
-    ]
-
-    with open(output_path, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
-        writer.writerow(headers)
 
 
-def append_result(
+def append_result_json(
     output_path: str,
     query_id: int,
     user_input: str,
@@ -152,10 +128,10 @@ def append_result(
     error: str = ""
 ):
     """
-    Append a single result to the CSV file
+    Append a single result to the JSONL file
 
     Args:
-        output_path: Path to output CSV file
+        output_path: Path to output JSONL file
         query_id: Query index
         user_input: Test query
         reference_contexts: Ground truth contexts
@@ -167,25 +143,29 @@ def append_result(
         status: SUCCESS or FAILED
         error: Error message if FAILED
     """
-    # Convert actual_contexts list to JSON string
-    actual_contexts_json = json.dumps(actual_contexts, ensure_ascii=False)
+    # Parse tool_calls_json string to native object
+    try:
+        tool_calls = json.loads(tool_calls_json) if tool_calls_json else []
+    except json.JSONDecodeError:
+        tool_calls = []
 
-    row = [
-        query_id,
-        user_input,
-        reference_contexts,
-        reference,
-        actual_contexts_json,
-        actual_answer,
-        tool_calls_json,
-        api_latency_ms,
-        status,
-        error
-    ]
+    # Create result dictionary with native types
+    result = {
+        'query_id': query_id,
+        'user_input': user_input,
+        'reference_contexts': reference_contexts,
+        'reference': reference,
+        'actual_contexts': actual_contexts,  # Native list, not JSON string
+        'actual_answer': actual_answer,
+        'tool_calls': tool_calls,  # Native object, not JSON string
+        'api_latency_ms': api_latency_ms,
+        'status': status,
+        'error': error
+    }
 
-    with open(output_path, 'a', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
-        writer.writerow(row)
+    # Write as single-line JSON
+    with open(output_path, 'a', encoding='utf-8') as f:
+        f.write(json.dumps(result, ensure_ascii=False) + '\n')
 
 
 def execute_single_query(
@@ -364,10 +344,9 @@ def main():
             # Clear checkpoint for fresh run
             checkpoint_manager.clear_checkpoint()
 
-    # Initialize output file if starting fresh
+    # JSONL files don't need initialization (no headers)
     if start_index == 0:
-        initialize_results_file(output_path)
-        logger.info(f"✓ Initialized output file: {output_path}")
+        logger.info(f"✓ Output file ready: {output_path}")
 
     # Execute queries
     logger.info("\n" + "=" * 80)
@@ -406,7 +385,7 @@ def main():
             logger.error(f"  ✗ Failed: {result['error']}")
 
         # Append to results file
-        append_result(
+        append_result_json(
             output_path,
             query_id,
             user_input,

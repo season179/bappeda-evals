@@ -2,7 +2,11 @@
 import pandas as pd
 import json
 
-df = pd.read_csv('results/eval_results.csv')
+# Read JSONL file
+with open('results/eval_results.jsonl', 'r', encoding='utf-8') as f:
+    results = [json.loads(line) for line in f]
+
+df = pd.DataFrame(results)
 
 print("=" * 80)
 print("RAG EXECUTOR RESULTS ANALYSIS")
@@ -16,7 +20,8 @@ print("PER-QUERY ANALYSIS")
 print("=" * 80)
 
 for idx, row in df.iterrows():
-    actual_contexts = json.loads(row['actual_contexts'])
+    # actual_contexts is already a list (not JSON string)
+    actual_contexts = row['actual_contexts']
     print(f"\nQuery {row['query_id']}:")
     print(f"  Status: {row['status']}")
     print(f"  Retrieved contexts: {len(actual_contexts)}")
