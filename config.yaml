@@ -111,3 +111,22 @@ validation:
   enabled: true
   # Fail fast on validation errors
   fail_fast: true
+
+# RAG Executor Configuration
+rag_executor:
+  # SmartKnowledge API endpoint
+  api_base_url: "http://localhost:3000"
+
+  # Request configuration
+  timeout_seconds: 120
+  max_retries: 3
+  retry_delay_seconds: 2
+
+  # Output configuration
+  results_dir: "./results"
+  output_file: "eval_results.csv"
+
+  # Checkpoint configuration
+  checkpoint_enabled: true
+  checkpoint_file: "executor_checkpoint.json"
+  checkpoint_interval: 10  # Save every N queries

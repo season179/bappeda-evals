@@ -227,6 +227,12 @@ checkpoint.json
 checkpoint.json.*
 progress_summary.json
 progress_summary.json.*
+executor_checkpoint.json
+executor_checkpoint.json.*
+
+# RAG Executor Results
+results/
+!results/.gitkeep
 
 # Partial and final results
 testset_partial.csv
@@ -244,3 +250,4 @@ synthetic_testset.csv
 
 *.csv
 *.json
+!multihop_translated.csv

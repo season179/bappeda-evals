@@ -3370,6 +3370,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "ragas" },
+    { name = "requests" },
 ]
 
 [package.optional-dependencies]
@@ -3392,6 +3393,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "pyyaml", specifier = ">=6.0.0" },
     { name = "ragas", specifier = ">=0.3.9" },
+    { name = "requests", specifier = ">=2.31.0" },
 ]
 provides-extras = ["dev"]
 
