@@ -44,10 +44,10 @@ uv run python run_rag_executor.py --input multihop_translated.csv
 uv run python run_rag_executor.py --resume  # Resume from checkpoint
 uv run python run_rag_executor.py --limit 10  # Test with limited queries
 
-# Run Ragas evaluation (--metric is required)
-uv run python run_ragas_evaluation.py --metric faithfulness --input results/eval_results.jsonl
-uv run python run_ragas_evaluation.py --metric context_precision --resume  # Resume from checkpoint
-uv run python run_ragas_evaluation.py --metric answer_relevancy --skip-failed  # Exclude queries without contexts
+# Run Ragas evaluation (--metric and --input are required)
+uv run python run_ragas_evaluation.py --metric faithfulness --input results/rag_execution_250122_143022.jsonl
+uv run python run_ragas_evaluation.py --metric context_precision --input results/rag_execution_250122_143022.jsonl --resume  # Resume from checkpoint
+uv run python run_ragas_evaluation.py --metric answer_relevancy --input results/rag_execution_250122_143022.jsonl --skip-failed  # Exclude queries without contexts
 ```
 
 ## Architecture
@@ -174,11 +174,11 @@ ragas_evaluation:
 
 **RAG Execution**:
 - Input: `multihop_translated.csv`
-- Output: `results/eval_results.jsonl` (JSONL format)
-- Checkpoint: `executor_checkpoint.json`
+- Output: `results/rag_execution_YYMMDD_HHMMSS.jsonl` (timestamped JSONL format)
+- Checkpoint: `executor_checkpoint_YYMMDD_HHMMSS.json` (timestamped)
 
 **Ragas Evaluation**:
-- Input: `results/eval_results.jsonl`
+- Input: `results/rag_execution_YYMMDD_HHMMSS.jsonl` (from executor)
 - Output:
   - `results/ragas_eval_detailed.jsonl` (per-query scores)
   - `results/ragas_eval_report.md` (summary report)
@@ -186,7 +186,7 @@ ragas_evaluation:
 
 ### JSONL Schema
 
-**Executor Output** (`eval_results.jsonl`):
+**Executor Output** (`rag_execution_YYMMDD_HHMMSS.jsonl`):
 ```json
 {
   "query_id": 0,
@@ -223,12 +223,17 @@ All three main scripts support checkpoint/resume:
 - **Checkpoint files**: Auto-saved at intervals (configurable)
 - **Resume flag**: `--resume` to continue from last checkpoint
 - **Automatic cleanup**: Checkpoints cleared on successful completion
+- **RAG Executor**: Checkpoint and output files are timestamped together
+  - On fresh run: Generates timestamp (e.g., `250122_143022`)
+  - On resume: Finds latest `executor_checkpoint_*.json` and reuses its timestamp
+  - Output file uses same timestamp: `rag_execution_250122_143022.jsonl`
 
 **When interrupted**:
 1. Process stopped mid-execution
 2. Checkpoint file contains last processed index
 3. Re-run with `--resume` flag
 4. Skips already processed items
+5. For RAG executor: Resumes to the same timestamped output file
 
 ## Logging
 

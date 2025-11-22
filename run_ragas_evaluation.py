@@ -57,8 +57,8 @@ def parse_args():
     parser.add_argument(
         "--input",
         type=str,
-        default=None,
-        help="Input JSONL file (default: from config)"
+        required=True,
+        help="Input JSONL file from RAG executor (required)"
     )
 
     parser.add_argument(
@@ -163,7 +163,7 @@ def main():
     )
 
     # Configuration
-    input_file = args.input or eval_config.get('input_file', './results/eval_results.jsonl')
+    input_file = args.input  # Required argument
     output_dir = args.output_dir or eval_config.get('output_dir', './results')
     detailed_results_file = eval_config.get('detailed_results_file', 'ragas_eval_detailed.jsonl')
     report_file = eval_config.get('report_file', 'ragas_eval_report.md')

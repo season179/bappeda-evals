@@ -1,9 +1,23 @@
 #!/usr/bin/env python3
 import pandas as pd
 import json
+from pathlib import Path
+import sys
+
+# Find latest rag_execution_*.jsonl file
+results_dir = Path('results')
+execution_files = sorted(results_dir.glob('rag_execution_*.jsonl'), reverse=True)
+
+if not execution_files:
+    print("Error: No rag_execution_*.jsonl files found in results/ directory")
+    sys.exit(1)
+
+latest_file = execution_files[0]
+print(f"Analyzing file: {latest_file}")
+print()
 
 # Read JSONL file
-with open('results/eval_results.jsonl', 'r', encoding='utf-8') as f:
+with open(latest_file, 'r', encoding='utf-8') as f:
     results = [json.loads(line) for line in f]
 
 df = pd.DataFrame(results)

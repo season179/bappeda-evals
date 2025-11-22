@@ -10,6 +10,7 @@ import json
 import os
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -257,11 +258,31 @@ def main():
     max_retries = executor_config.get('max_retries', 3)
     retry_delay = executor_config.get('retry_delay_seconds', 2)
     results_dir = executor_config.get('results_dir', './results')
-    output_file = executor_config.get('output_file', 'eval_results.csv')
     checkpoint_enabled = executor_config.get('checkpoint_enabled', True)
-    checkpoint_file = executor_config.get('checkpoint_file', 'executor_checkpoint.json')
     checkpoint_interval = executor_config.get('checkpoint_interval', 10)
 
+    # Generate or load timestamp for this execution
+    timestamp = None
+    if checkpoint_enabled and args.resume:
+        # Find most recent checkpoint file
+        checkpoint_pattern = Path('.').glob('executor_checkpoint_*.json')
+        checkpoint_files = sorted(checkpoint_pattern, reverse=True)
+        if checkpoint_files:
+            latest_checkpoint = checkpoint_files[0]
+            # Extract timestamp from filename: executor_checkpoint_YYMMDD_HHMMSS.json
+            timestamp = latest_checkpoint.stem.replace('executor_checkpoint_', '')
+            logger.info(f"Resuming with timestamp from checkpoint: {timestamp}")
+        else:
+            logger.warning("No checkpoint file found for resume, starting fresh")
+
+    # Generate new timestamp if not loaded
+    if timestamp is None:
+        timestamp = datetime.now().strftime('%y%m%d_%H%M%S')
+        logger.info(f"Generated new timestamp: {timestamp}")
+
+    # Construct timestamped filenames
+    output_file = f"rag_execution_{timestamp}.jsonl"
+    checkpoint_file = f"executor_checkpoint_{timestamp}.json"
     output_path = Path(results_dir) / output_file
 
     logger.info(f"Configuration:")

@@ -124,11 +124,15 @@ rag_executor:
 
   # Output configuration
   results_dir: "./results"
-  output_file: "eval_results.jsonl"
+  # Note: output_file is now auto-generated with timestamp: rag_execution_YYMMDD_HHMMSS.jsonl
+  # The config value below is deprecated and ignored
+  output_file: "eval_results.jsonl"  # DEPRECATED - ignored, kept for reference
 
   # Checkpoint configuration
   checkpoint_enabled: true
-  checkpoint_file: "executor_checkpoint.json"
+  # Note: checkpoint_file is now auto-generated with timestamp: executor_checkpoint_YYMMDD_HHMMSS.json
+  # The config value below is deprecated and ignored
+  checkpoint_file: "executor_checkpoint.json"  # DEPRECATED - ignored, kept for reference
   checkpoint_interval: 10  # Save every N queries
 
 # Ragas Evaluation Configuration
@@ -141,7 +145,9 @@ ragas_evaluation:
     temperature: 0.7
 
   # Input file (output from RAG executor)
-  input_file: "./results/eval_results.jsonl"
+  # Note: --input argument is now REQUIRED when running run_ragas_evaluation.py
+  # The config value below is deprecated and ignored
+  input_file: "./results/eval_results.jsonl"  # DEPRECATED - use --input argument instead
 
   # Output configuration
   output_dir: "./results"
