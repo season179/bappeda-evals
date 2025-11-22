@@ -81,8 +81,6 @@ class OpenRouterChatOpenAI(ChatOpenAI):
         Returns:
             LLMResult with one generation group per prompt
         """
-        # Use print for visibility since logger might not show debug level
-        print(f"[OpenRouterChatOpenAI] agenerate_prompt called with {len(prompts)} prompts")
         logger.debug(f"agenerate_prompt called with {len(prompts)} prompts")
 
         # Process each prompt separately to ensure OpenRouter returns one result per prompt
@@ -90,7 +88,6 @@ class OpenRouterChatOpenAI(ChatOpenAI):
         combined_llm_output: Dict[str, Any] = {}
 
         for i, prompt in enumerate(prompts):
-            print(f"[OpenRouterChatOpenAI] Processing prompt {i+1}/{len(prompts)}")
             logger.debug(f"Processing prompt {i+1}/{len(prompts)}")
 
             # Call parent's agenerate_prompt with single prompt
@@ -104,7 +101,6 @@ class OpenRouterChatOpenAI(ChatOpenAI):
             # Extract the first (and only) generation group
             if result.generations:
                 all_generations.append(result.generations[0])
-                print(f"[OpenRouterChatOpenAI]   Got {len(result.generations[0])} generations for prompt {i+1}")
                 logger.debug(f"  Got {len(result.generations[0])} generations for prompt {i+1}")
             else:
                 logger.warning(f"  No generations returned for prompt {i+1}")
@@ -121,7 +117,6 @@ class OpenRouterChatOpenAI(ChatOpenAI):
                     else:
                         combined_llm_output[key] = value
 
-        print(f"[OpenRouterChatOpenAI] Returning {len(all_generations)} generation groups")
         logger.debug(f"agenerate_prompt returning {len(all_generations)} generation groups")
 
         return LLMResult(

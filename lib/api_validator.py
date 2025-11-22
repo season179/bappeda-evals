@@ -13,6 +13,11 @@ from openai import OpenAI, AuthenticationError, NotFoundError, RateLimitError
 from .logger import get_logger
 
 
+# Validation constants
+TEST_MAX_TOKENS = 50
+TEST_PROMPT = "Say 'test'"
+
+
 class APIValidator:
     """Validates API connectivity and credentials"""
 
@@ -83,11 +88,11 @@ class APIValidator:
                 api_key=self.api_key,
                 base_url=self.base_url,
                 temperature=0.7,
-                max_tokens=50  # Small request
+                max_tokens=TEST_MAX_TOKENS
             )
 
             # Test with simple prompt
-            response = llm.invoke("Say 'test'")
+            response = llm.invoke(TEST_PROMPT)
 
             if response and response.content:
                 self.logger.info(f"  LLM test successful")

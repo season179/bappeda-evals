@@ -128,3 +128,51 @@ def get_logger(name: Optional[str] = None) -> logging.Logger:
     if name is None:
         name = "ragas_eval"
     return logging.getLogger(name)
+
+
+def setup_logger_from_config(
+    name: str,
+    config: dict,
+    verbose: bool = False,
+    title: Optional[str] = None
+) -> logging.Logger:
+    """
+    Setup logger from configuration dictionary with optional verbose override
+
+    Args:
+        name: Logger name
+        config: Full configuration dictionary containing 'logging' section
+        verbose: If True, override console level to DEBUG
+        title: Optional title to log after setup
+
+    Returns:
+        Configured logger instance
+    """
+    logging_config = config.get('logging', {})
+
+    # Get console level, with verbose override
+    console_level_str = logging_config.get('console_level', 'INFO')
+    if verbose:
+        console_level_str = 'DEBUG'
+
+    # Convert string levels to logging constants
+    console_level = getattr(logging, console_level_str)
+    file_level = getattr(logging, logging_config.get('file_level', 'DEBUG'))
+
+    # Setup logger
+    logger = setup_logger(
+        name=name,
+        log_dir=logging_config.get('directory', 'logs'),
+        console_level=console_level,
+        file_level=file_level,
+        enable_api_log=logging_config.get('api_log_enabled', True),
+        enable_error_log=logging_config.get('error_log_enabled', True)
+    )
+
+    # Log title if provided
+    if title:
+        logger.info("=" * 80)
+        logger.info(title)
+        logger.info("=" * 80)
+
+    return logger

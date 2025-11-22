@@ -14,6 +14,12 @@ import pandas as pd
 from .logger import get_logger
 
 
+# Report generation constants
+DEFAULT_BAR_WIDTH = 40
+DEFAULT_TOP_N = 5
+DEFAULT_TEXT_TRUNCATE_LENGTH = 100
+
+
 class RagasReportGenerator:
     """Generates markdown reports from Ragas evaluation results"""
 
@@ -152,10 +158,10 @@ class RagasReportGenerator:
         ])
 
         # Sort metrics by name for consistency
-        metric_items = [(k, v) for k, v in results.items() if k != 'per_sample']
-        metric_items.sort(key=lambda x: x[0])
+        sorted_metrics = [(k, v) for k, v in results.items() if k != 'per_sample']
+        sorted_metrics.sort(key=lambda x: x[0])
 
-        for metric_name, score in metric_items:
+        for metric_name, score in sorted_metrics:
             # Format metric name for display
             display_name = metric_name.replace('_', ' ').title()
             lines.append(f"| {display_name} | {score:.4f} |")
@@ -221,7 +227,7 @@ class RagasReportGenerator:
 
         # Find max count for scaling
         max_count = counts.max()
-        bar_width = 40
+        bar_width = DEFAULT_BAR_WIDTH
 
         # Generate bars
         for interval, count in counts.items():
@@ -239,7 +245,7 @@ class RagasReportGenerator:
     def _generate_best_worst_queries(
         self,
         detailed_results: pd.DataFrame,
-        top_n: int = 5
+        top_n: int = DEFAULT_TOP_N
     ) -> List[str]:
         """Generate best and worst performing queries"""
         lines = [
@@ -276,7 +282,7 @@ class RagasReportGenerator:
 
         for i, (idx, row) in enumerate(sorted_df.head(top_n).iterrows(), 1):
             query_id = self._safe_get_metadata(row, 'query_id', idx)
-            query = row['user_input'][:100] + "..." if len(row['user_input']) > 100 else row['user_input']
+            query = row['user_input'][:DEFAULT_TEXT_TRUNCATE_LENGTH] + "..." if len(row['user_input']) > DEFAULT_TEXT_TRUNCATE_LENGTH else row['user_input']
             score = row[ranking_metric]
 
             contexts_count = len(row['retrieved_contexts']) if isinstance(row.get('retrieved_contexts'), list) else 0
@@ -298,7 +304,7 @@ class RagasReportGenerator:
 
         for i, (idx, row) in enumerate(sorted_df.tail(top_n).iloc[::-1].iterrows(), 1):
             query_id = self._safe_get_metadata(row, 'query_id', idx)
-            query = row['user_input'][:100] + "..." if len(row['user_input']) > 100 else row['user_input']
+            query = row['user_input'][:DEFAULT_TEXT_TRUNCATE_LENGTH] + "..." if len(row['user_input']) > DEFAULT_TEXT_TRUNCATE_LENGTH else row['user_input']
             score = row[ranking_metric]
             error = self._safe_get_metadata(row, 'error', '')
 

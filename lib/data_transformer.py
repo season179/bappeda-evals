@@ -22,6 +22,30 @@ class RagasDataTransformer:
         """Initialize the transformer"""
         self.logger = get_logger(__name__)
 
+    def _parse_string_to_object(self, value: str) -> Any:
+        """
+        Parse a string value as JSON or Python literal
+
+        Args:
+            value: String to parse
+
+        Returns:
+            Parsed object, or None if parsing fails
+        """
+        # Try JSON first
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            pass
+
+        # Try Python literal eval
+        try:
+            return ast.literal_eval(value)
+        except (ValueError, SyntaxError):
+            pass
+
+        return None
+
     def load_jsonl(self, file_path: str) -> List[Dict[str, Any]]:
         """
         Load results from JSONL file
@@ -72,24 +96,12 @@ class RagasDataTransformer:
 
         # If string, try to parse as JSON or Python literal
         if isinstance(reference_contexts, str):
-            # Try JSON first
-            try:
-                parsed = json.loads(reference_contexts)
-                if isinstance(parsed, list):
-                    return parsed
-            except json.JSONDecodeError:
-                pass
+            parsed = self._parse_string_to_object(reference_contexts)
+            if parsed is not None and isinstance(parsed, list):
+                return parsed
 
-            # Try Python literal eval
-            try:
-                parsed = ast.literal_eval(reference_contexts)
-                if isinstance(parsed, list):
-                    return parsed
-            except (ValueError, SyntaxError):
-                pass
-
-            # If all parsing fails, treat as single context
-            self.logger.warning(f"Could not parse reference_contexts, treating as single string")
+            # If parsing fails or result is not a list, treat as single context
+            self.logger.warning(f"Could not parse reference_contexts as list, treating as single string")
             return [reference_contexts]
 
         # If other type, convert to string and wrap in list

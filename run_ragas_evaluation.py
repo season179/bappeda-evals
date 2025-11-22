@@ -17,11 +17,12 @@ import pandas as pd
 import yaml
 from dotenv import load_dotenv
 
-from lib import setup_logger
+from lib import setup_logger_from_config
 from lib.data_transformer import RagasDataTransformer
 from lib.ragas_evaluator import RagasEvaluator
 from lib.report_generator import RagasReportGenerator
-from lib.state_manager import CheckpointManager
+from lib.result_writer import IncrementalJSONLWriter
+from lib.state_manager import EvaluationCheckpointManager
 
 # Load environment variables
 load_dotenv()
@@ -68,11 +69,12 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--metrics",
+        "--metric",
         type=str,
-        nargs='+',
-        default=None,
-        help="Metrics to evaluate (default: all from config)"
+        required=True,
+        help="Single metric to evaluate (required). Available: context_precision, context_recall, "
+             "context_entity_recall, answer_relevancy, faithfulness, answer_correctness, "
+             "answer_similarity, context_utilization"
     )
 
     parser.add_argument(
@@ -93,6 +95,12 @@ def parse_args():
         help="Skip queries without retrieved contexts (default: assign zero scores)"
     )
 
+    parser.add_argument(
+        "--retry-failed",
+        action="store_true",
+        help="Retry only failed samples from previous run (requires --resume)"
+    )
+
     return parser.parse_args()
 
 
@@ -101,45 +109,44 @@ def create_output_directory(output_dir: str):
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
 
-def save_detailed_results(
-    dataset,
-    results: Dict,
-    output_path: str,
-    logger
-):
+def generate_metadata(row):
     """
-    Save detailed per-query results to JSONL file
+    Generate metadata dict for each row
 
     Args:
-        dataset: Evaluated Ragas dataset
-        results: Ragas evaluation results
-        output_path: Path to save JSONL file
-        logger: Logger instance
+        row: DataFrame row containing query results
+
+    Returns:
+        Dictionary with metadata fields
     """
-    logger.info(f"Saving detailed results to {output_path}")
+    retrieved_contexts = row.get('retrieved_contexts', [])
+    has_contexts = isinstance(retrieved_contexts, list) and len(retrieved_contexts) > 0
 
-    try:
-        # Convert dataset to pandas DataFrame
-        df = dataset.to_pandas()
-
-        # Save as JSONL
-        with open(output_path, 'w', encoding='utf-8') as f:
-            for _, row in df.iterrows():
-                # Convert row to dict
-                record = row.to_dict()
-                # Write as JSON line
-                f.write(json.dumps(record, ensure_ascii=False) + '\n')
-
-        logger.info(f"✓ Saved {len(df)} detailed results to {output_path}")
-
-    except Exception as e:
-        logger.error(f"Failed to save detailed results: {e}")
-        raise
+    return {
+        'has_contexts': has_contexts,
+        'query_id': row.name,
+        'error': '',
+        'api_latency_ms': 0
+    }
 
 
 def main():
     """Main execution function"""
     args = parse_args()
+
+    # Validate metric before proceeding
+    AVAILABLE_METRICS = [
+        'context_precision', 'context_recall', 'context_entity_recall',
+        'answer_relevancy', 'faithfulness', 'answer_correctness',
+        'answer_similarity', 'context_utilization'
+    ]
+
+    if args.metric not in AVAILABLE_METRICS:
+        print(f"\nError: Invalid metric '{args.metric}'")
+        print(f"\nAvailable metrics:")
+        for metric in AVAILABLE_METRICS:
+            print(f"  - {metric}")
+        sys.exit(1)
 
     # Load configuration
     config = load_config(args.config)
@@ -147,42 +154,25 @@ def main():
     api_config = config.get('api', {})
     llm_config = config.get('llm', {})
     embeddings_config = config.get('embeddings', {})
-    logging_config = config.get('logging', {})
-
     # Setup logging
-    import logging as log_module
-    console_level_str = logging_config.get('console_level', 'INFO')
-    if args.verbose:
-        console_level_str = 'DEBUG'
-
-    console_level = getattr(log_module, console_level_str)
-    file_level = getattr(log_module, logging_config.get('file_level', 'DEBUG'))
-
-    logger = setup_logger(
+    logger = setup_logger_from_config(
         name="ragas_evaluation",
-        log_dir=logging_config.get('directory', 'logs'),
-        console_level=console_level,
-        file_level=file_level,
-        enable_api_log=logging_config.get('api_log_enabled', True),
-        enable_error_log=logging_config.get('error_log_enabled', True)
+        config=config,
+        verbose=args.verbose,
+        title="Ragas Evaluation"
     )
-
-    logger.info("=" * 80)
-    logger.info("Ragas Evaluation")
-    logger.info("=" * 80)
 
     # Configuration
     input_file = args.input or eval_config.get('input_file', './results/eval_results.jsonl')
     output_dir = args.output_dir or eval_config.get('output_dir', './results')
     detailed_results_file = eval_config.get('detailed_results_file', 'ragas_eval_detailed.jsonl')
     report_file = eval_config.get('report_file', 'ragas_eval_report.md')
-    metrics = args.metrics or eval_config.get('metrics', None)
+    metrics = [args.metric]  # Single metric as list for evaluator
     batch_size = eval_config.get('batch_size', 10)
     checkpoint_enabled = eval_config.get('checkpoint_enabled', True)
     checkpoint_file = eval_config.get('checkpoint_file', 'ragas_checkpoint.json')
-    checkpoint_interval = eval_config.get('checkpoint_interval', 10)
-    max_retries = eval_config.get('max_retries', 3)
-    retry_delay = eval_config.get('retry_delay_seconds', 5)
+    max_sample_attempts = eval_config.get('max_sample_attempts', 3)
+    continue_on_batch_error = eval_config.get('continue_on_batch_error', True)
     include_failed = not args.skip_failed
 
     detailed_results_path = Path(output_dir) / detailed_results_file
@@ -207,7 +197,7 @@ def main():
     logger.info(f"  Ragas LLM Model: {ragas_llm_model}")
     logger.info(f"  Ragas LLM Temperature: {ragas_llm_temperature}")
     logger.info(f"  Embedding Model: {embeddings_config.get('model')}")
-    logger.info(f"  Metrics: {metrics or 'all'}")
+    logger.info(f"  Metric: {args.metric}")
     logger.info(f"  Batch size: {batch_size}")
     logger.info(f"  Include failed queries: {include_failed}")
 
@@ -265,7 +255,7 @@ def main():
             llm_temperature=ragas_llm_temperature,
             timeout=llm_timeout,
             embeddings_timeout=embeddings_timeout,
-            max_retries=max_retries
+            max_retries=3  # Internal retry for API calls
         )
         logger.info("✓ Ragas evaluator initialized")
 
@@ -273,83 +263,162 @@ def main():
         logger.error(f"Failed to initialize Ragas evaluator: {e}")
         sys.exit(1)
 
-    # Check for checkpoint
+    # Initialize checkpoint manager
     checkpoint_manager = None
-    start_index = 0
+    skip_sample_ids = []
+    retry_sample_ids = []
 
     if checkpoint_enabled:
-        checkpoint_manager = CheckpointManager(checkpoint_file)
+        checkpoint_manager = EvaluationCheckpointManager(checkpoint_file)
 
         if args.resume:
             checkpoint_data = checkpoint_manager.load_checkpoint()
-            if checkpoint_data:
-                start_index = checkpoint_data.get('last_processed_index', 0) + 1
-                logger.info(f"✓ Resuming from sample {start_index}")
+            checkpoint_manager.set_total_samples(len(dataset))
+
+            if args.retry_failed:
+                # Retry failed samples only
+                retry_sample_ids = checkpoint_manager.get_failed_samples()
+                logger.info(f"✓ Retry mode: {len(retry_sample_ids)} failed samples to retry")
+            else:
+                # Skip successful samples
+                skip_sample_ids = checkpoint_manager.get_successful_samples()
+                logger.info(f"✓ Resume mode: {len(skip_sample_ids)} samples already completed")
         else:
             # Clear checkpoint for fresh run
             checkpoint_manager.clear_checkpoint()
+            checkpoint_manager.set_total_samples(len(dataset))
 
     # Run evaluation
     logger.info("\n" + "=" * 80)
-    logger.info("RUNNING RAGAS EVALUATION")
+    logger.info("RUNNING RAGAS EVALUATION (INCREMENTAL)")
     logger.info("=" * 80)
 
     start_time = time.time()
 
+    # Initialize incremental writer
+    writer = IncrementalJSONLWriter(
+        output_file=str(detailed_results_path),
+        backup_enabled=True
+    )
+
+    # Clear output file if starting fresh (not resuming)
+    if not args.resume and writer.exists():
+        writer.clear()
+
+    # Track aggregated metrics
+    all_metric_scores = {}
+    successful_sample_count = 0
+    failed_sample_count = 0
+
     try:
-        # Run evaluation with retry logic
-        results_dict, evaluation_result = evaluator.evaluate_with_retry(
+        # Run incremental evaluation
+        for batch_results, batch_sample_ids, batch_status in evaluator.evaluate_incremental(
             dataset=dataset,
             metric_names=metrics,
             batch_size=batch_size,
             show_progress=True,
-            max_retries=max_retries,
-            retry_delay=retry_delay
-        )
+            skip_sample_ids=skip_sample_ids,
+            retry_sample_ids=retry_sample_ids if args.retry_failed else None,
+            max_sample_attempts=max_sample_attempts
+        ):
+            # Process batch results
+            for idx, sample_result in enumerate(batch_results):
+                sample_id = batch_sample_ids[idx]
+
+                # Extract metrics for this sample
+                sample_metrics = {
+                    k: v for k, v in sample_result.items()
+                    if k not in ['user_input', 'reference_contexts', 'reference', 'retrieved_contexts', 'response']
+                }
+
+                # Check if sample has valid metrics (non-zero)
+                has_valid_metrics = any(v > 0 for v in sample_metrics.values())
+
+                if batch_status == "success" and has_valid_metrics:
+                    # Save as successful
+                    if checkpoint_manager:
+                        checkpoint_manager.save_sample_result(
+                            sample_id=sample_id,
+                            status="success",
+                            metrics=sample_metrics
+                        )
+
+                    # Accumulate metrics for averaging
+                    for metric_name, score in sample_metrics.items():
+                        if metric_name not in all_metric_scores:
+                            all_metric_scores[metric_name] = []
+                        all_metric_scores[metric_name].append(score)
+
+                    successful_sample_count += 1
+
+                else:
+                    # Save as failed
+                    if checkpoint_manager:
+                        attempts = checkpoint_manager.get_sample_attempts(sample_id)
+                        checkpoint_manager.save_sample_result(
+                            sample_id=sample_id,
+                            status="failed",
+                            error=f"Batch status: {batch_status}"
+                        )
+
+                    failed_sample_count += 1
+
+                # Write result to JSONL immediately
+                writer.write_sample(sample_result)
+
+            # Mark batch as completed
+            if checkpoint_manager:
+                checkpoint_manager.mark_batch_completed()
+                checkpoint_manager.set_elapsed_seconds(time.time() - start_time)
+                checkpoint_manager.save_checkpoint()
+
+            logger.info(f"Progress: {successful_sample_count + failed_sample_count}/{len(dataset)} samples processed")
 
         elapsed_time = time.time() - start_time
 
         logger.info(f"\n✓ Evaluation completed in {elapsed_time:.1f}s")
-        logger.info(f"Average time per sample: {elapsed_time / len(dataset):.2f}s")
+        logger.info(f"Successful samples: {successful_sample_count}")
+        logger.info(f"Failed samples: {failed_sample_count}")
+        if successful_sample_count > 0:
+            logger.info(f"Average time per successful sample: {elapsed_time / successful_sample_count:.2f}s")
 
     except Exception as e:
         logger.error(f"Evaluation failed: {e}")
+        logger.info(f"Partial results saved to {detailed_results_path}")
+        if checkpoint_manager:
+            logger.info(f"Checkpoint saved to {checkpoint_file}")
+            logger.info("Use --resume to continue from where you left off")
         sys.exit(1)
 
-    # Save detailed results
+    # Detailed results already saved incrementally
     logger.info("\n" + "=" * 80)
-    logger.info("SAVING RESULTS")
+    logger.info("PREPARING SUMMARY")
     logger.info("=" * 80)
 
-    try:
-        # Use the evaluation_result (EvaluationResult object) for detailed results
-        save_detailed_results(evaluation_result.dataset, results_dict, detailed_results_path, logger)
-    except Exception as e:
-        logger.error(f"Failed to save detailed results: {e}")
-        # Continue to report generation
+    # Calculate average metrics from accumulated scores
+    results_dict = {
+        metric_name: sum(scores) / len(scores)
+        for metric_name, scores in all_metric_scores.items()
+        if len(scores) > 0
+    }
+
+    logger.info(f"✓ Detailed results saved to {detailed_results_path}")
+    logger.info(f"  Total samples written: {writer.get_sample_count()}")
 
     # Generate report
     try:
         report_generator = RagasReportGenerator()
 
-        # Convert evaluation dataset to DataFrame for report
-        detailed_df = evaluation_result.dataset.to_pandas()
+        # Read detailed results from JSONL for report
+        detailed_samples = writer.read_existing()
+        detailed_df = pd.DataFrame(detailed_samples)
 
         # Generate _metadata column for report generator
-        def generate_metadata(row):
-            """Generate metadata dict for each row"""
-            retrieved_contexts = row.get('retrieved_contexts', [])
-            has_contexts = isinstance(retrieved_contexts, list) and len(retrieved_contexts) > 0
-
-            return {
-                'has_contexts': has_contexts,
-                'query_id': row.name,
-                'error': '',
-                'api_latency_ms': 0
-            }
-
-        detailed_df['_metadata'] = detailed_df.apply(generate_metadata, axis=1)
-        logger.info(f"Generated _metadata for {len(detailed_df)} queries")
+        if not detailed_df.empty:
+            detailed_df['_metadata'] = detailed_df.apply(generate_metadata, axis=1)
+            logger.info(f"Generated _metadata for {len(detailed_df)} queries")
+        else:
+            logger.warning("No detailed results found for report generation")
 
         # Add config context for report
         report_config = {
@@ -375,15 +444,20 @@ def main():
     logger.info("\n" + "=" * 80)
     logger.info("EVALUATION COMPLETE")
     logger.info("=" * 80)
-    logger.info(f"Total samples evaluated: {len(dataset)}")
+    logger.info(f"Total samples in dataset: {len(dataset)}")
+    logger.info(f"Successful evaluations: {successful_sample_count}")
+    logger.info(f"Failed evaluations: {failed_sample_count}")
     logger.info(f"Total time: {elapsed_time:.1f}s")
     logger.info(f"Detailed results: {detailed_results_path}")
     logger.info(f"Report: {report_path}")
 
-    # Log final metrics
-    logger.info("\nFinal Metrics:")
-    for metric_name, score in results_dict.items():
-        logger.info(f"  {metric_name}: {score:.4f}")
+    # Log final metrics (averaged over successful samples)
+    if results_dict:
+        logger.info("\nFinal Metrics (averaged over successful samples):")
+        for metric_name, score in results_dict.items():
+            logger.info(f"  {metric_name}: {score:.4f}")
+    else:
+        logger.warning("No metrics calculated (no successful samples)")
 
     # Clear checkpoint on successful completion
     if checkpoint_manager:

@@ -17,7 +17,7 @@ import pandas as pd
 import yaml
 from dotenv import load_dotenv
 
-from lib import setup_logger
+from lib import setup_logger_from_config
 from lib.rag_client import RAGClient
 from lib.state_manager import CheckpointManager
 
@@ -242,29 +242,14 @@ def main():
     # Load configuration
     config = load_config(args.config)
     executor_config = config.get('rag_executor', {})
-    logging_config = config.get('logging', {})
 
     # Setup logging
-    import logging as log_module
-    console_level_str = logging_config.get('console_level', 'INFO')
-    if args.verbose:
-        console_level_str = 'DEBUG'
-
-    console_level = getattr(log_module, console_level_str)
-    file_level = getattr(log_module, logging_config.get('file_level', 'DEBUG'))
-
-    logger = setup_logger(
+    logger = setup_logger_from_config(
         name="rag_executor",
-        log_dir=logging_config.get('directory', 'logs'),
-        console_level=console_level,
-        file_level=file_level,
-        enable_api_log=logging_config.get('api_log_enabled', True),
-        enable_error_log=logging_config.get('error_log_enabled', True)
+        config=config,
+        verbose=args.verbose,
+        title="RAG Executor for Evaluation"
     )
-
-    logger.info("=" * 80)
-    logger.info("RAG Executor for Evaluation")
-    logger.info("=" * 80)
 
     # Configuration
     api_base_url = executor_config.get('api_base_url', 'http://localhost:3000')

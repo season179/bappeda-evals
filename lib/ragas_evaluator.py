@@ -114,8 +114,7 @@ class RagasEvaluator:
             )
 
             self.logger.info(f"Initialized LLM: {self.llm_model} (timeout: {self.timeout}s)")
-            print(f"[RagasEvaluator] Using OpenRouterChatOpenAI with bypass_n=True")
-            print(f"[RagasEvaluator] Wrapper class: {llm.__class__.__name__}")
+            self.logger.debug(f"Using OpenRouterChatOpenAI with bypass_n=True, wrapper class: {llm.__class__.__name__}")
             return llm
 
         except Exception as e:
@@ -208,11 +207,15 @@ class RagasEvaluator:
         metrics = []
         for name in metric_names:
             if name in self.AVAILABLE_METRIC_CLASSES:
-                # Create fresh instance of the metric
-                metric_class = self.AVAILABLE_METRIC_CLASSES[name]
-                metric_instance = metric_class()
-                metrics.append(metric_instance)
-                self.logger.debug(f"Added metric: {name}")
+                try:
+                    # Create fresh instance of the metric
+                    metric_class = self.AVAILABLE_METRIC_CLASSES[name]
+                    metric_instance = metric_class()
+                    metrics.append(metric_instance)
+                    self.logger.debug(f"Added metric: {name}")
+                except Exception as e:
+                    self.logger.error(f"Failed to initialize metric '{name}': {e}")
+                    # Continue with other metrics instead of failing completely
             else:
                 self.logger.warning(f"Unknown metric: {name}")
 
@@ -331,103 +334,157 @@ class RagasEvaluator:
                     self.logger.error(f"Evaluation failed after {max_retries} attempts")
                     raise
 
-    def evaluate_batched(
+    def evaluate_incremental(
         self,
         dataset: Dataset,
         metric_names: Optional[List[str]] = None,
         batch_size: int = 10,
-        checkpoint_callback: Optional[callable] = None
-    ) -> Dict[str, Any]:
+        show_progress: bool = True,
+        skip_sample_ids: Optional[List[int]] = None,
+        retry_sample_ids: Optional[List[int]] = None,
+        max_sample_attempts: int = 3
+    ):
         """
-        Run Ragas evaluation in batches with checkpointing
+        Run Ragas evaluation incrementally in batches, yielding results after each batch
+
+        This enables:
+        - Frequent disk persistence (after each batch)
+        - Error resilience (continue on batch failures)
+        - Resume capability (skip already-processed samples)
 
         Args:
             dataset: Ragas Dataset to evaluate
             metric_names: List of metric names to use
             batch_size: Number of samples per batch
-            checkpoint_callback: Optional callback function for checkpointing
-                                 Called with (batch_num, batch_results)
+            show_progress: Whether to show progress bar
+            skip_sample_ids: Sample IDs to skip (already processed)
+            retry_sample_ids: Sample IDs to retry (previously failed)
+            max_sample_attempts: Maximum attempts per sample
 
-        Returns:
-            Dictionary with combined evaluation results
+        Yields:
+            Tuple of (batch_results, batch_sample_ids, batch_status)
+            - batch_results: List of dicts with metrics for each sample
+            - batch_sample_ids: List of sample IDs in this batch
+            - batch_status: "success" or "failed"
         """
-        self.logger.info(f"Running batched evaluation (batch_size={batch_size})")
+        from ragas import evaluate
+        from ragas.dataset_schema import EvaluationDataset
 
-        total_samples = len(dataset)
-        num_batches = (total_samples + batch_size - 1) // batch_size
+        skip_sample_ids = skip_sample_ids or []
+        retry_sample_ids = retry_sample_ids or []
 
-        all_results = []
+        self.logger.info("=" * 80)
+        self.logger.info("Starting Incremental Ragas Evaluation")
+        self.logger.info("=" * 80)
+        self.logger.info(f"Dataset size: {len(dataset)}")
+        self.logger.info(f"Batch size: {batch_size}")
+        self.logger.info(f"Samples to skip: {len(skip_sample_ids)}")
+        self.logger.info(f"Samples to retry: {len(retry_sample_ids)}")
+
+        # Get metrics
         metrics = self.get_metrics(metric_names)
+        self.logger.info(f"Metrics: {[m.name for m in metrics]}")
 
-        for batch_num in range(num_batches):
-            start_idx = batch_num * batch_size
-            end_idx = min((batch_num + 1) * batch_size, total_samples)
+        # Convert dataset to list of samples for batch processing
+        dataset_df = dataset.to_pandas()
+        total_samples = len(dataset_df)
 
-            self.logger.info(
-                f"\nProcessing batch {batch_num + 1}/{num_batches} "
-                f"(samples {start_idx}-{end_idx})"
-            )
+        # Determine which samples to process
+        if retry_sample_ids:
+            # Retry mode: only process failed samples
+            samples_to_process = retry_sample_ids
+            self.logger.info(f"Retry mode: processing {len(samples_to_process)} failed samples")
+        else:
+            # Normal mode: process all samples except skipped ones
+            samples_to_process = [
+                i for i in range(total_samples)
+                if i not in skip_sample_ids
+            ]
+            self.logger.info(f"Processing {len(samples_to_process)} samples")
 
-            # Get batch
-            batch_dataset = dataset.select(range(start_idx, end_idx))
+        # Process in batches
+        num_batches = (len(samples_to_process) + batch_size - 1) // batch_size
 
-            # Evaluate batch
+        for batch_idx in range(num_batches):
+            batch_start = batch_idx * batch_size
+            batch_end = min(batch_start + batch_size, len(samples_to_process))
+            batch_sample_ids = samples_to_process[batch_start:batch_end]
+
+            self.logger.info(f"\n{'='*80}")
+            self.logger.info(f"Batch {batch_idx + 1}/{num_batches} (samples {batch_sample_ids[0]}-{batch_sample_ids[-1]})")
+            self.logger.info(f"{'='*80}")
+
             try:
-                batch_result = self.evaluate(
+                # Extract batch samples
+                batch_df = dataset_df.iloc[batch_sample_ids]
+
+                # Convert batch to Ragas Dataset
+                batch_dataset = EvaluationDataset.from_pandas(batch_df)
+
+                # Evaluate batch
+                self.logger.info(f"Evaluating {len(batch_dataset)} samples...")
+                start_time = time.time()
+
+                result = evaluate(
                     dataset=batch_dataset,
-                    metric_names=metric_names,
-                    batch_size=len(batch_dataset),
-                    show_progress=False
+                    metrics=metrics,
+                    llm=self.llm,
+                    embeddings=self.embeddings,
+                    raise_exceptions=False  # Continue on errors within batch
                 )
 
-                all_results.append(batch_result)
+                elapsed_time = time.time() - start_time
 
-                # Checkpoint callback
-                if checkpoint_callback:
-                    checkpoint_callback(batch_num, batch_result)
+                # Convert result to list of per-sample dicts
+                result_df = result.dataset.to_pandas()
+                batch_results = []
+
+                for idx, row in result_df.iterrows():
+                    sample_result = {
+                        'user_input': row.get('user_input', ''),
+                        'reference_contexts': row.get('reference_contexts', []),
+                        'reference': row.get('reference', ''),
+                        'retrieved_contexts': row.get('retrieved_contexts', []),
+                        'response': row.get('response', '')
+                    }
+
+                    # Add metric scores
+                    for metric in metrics:
+                        metric_name = metric.name
+                        sample_result[metric_name] = row.get(metric_name, 0.0)
+
+                    batch_results.append(sample_result)
+
+                self.logger.info(f"✓ Batch completed in {elapsed_time:.1f}s")
+                self.logger.info(f"  Average: {elapsed_time / len(batch_dataset):.2f}s per sample")
+
+                # Yield successful batch
+                yield (batch_results, batch_sample_ids, "success")
 
             except Exception as e:
-                self.logger.error(f"Batch {batch_num + 1} failed: {e}")
-                # Continue with next batch
+                self.logger.error(f"✗ Batch {batch_idx + 1} failed: {e}")
+                self.logger.error(f"  Affected samples: {batch_sample_ids}")
 
-        # Combine results
-        if not all_results:
-            raise RuntimeError("All batches failed")
+                # Create empty results for failed batch
+                failed_results = []
+                for sample_id in batch_sample_ids:
+                    row = dataset_df.iloc[sample_id]
+                    failed_result = {
+                        'user_input': row.get('user_input', ''),
+                        'reference_contexts': row.get('reference_contexts', []),
+                        'reference': row.get('reference', ''),
+                        'retrieved_contexts': row.get('retrieved_contexts', []),
+                        'response': ''
+                    }
+                    # Add zero scores for all metrics
+                    for metric in metrics:
+                        failed_result[metric.name] = 0.0
 
-        combined_result = self._combine_batch_results(all_results, metrics)
-        return combined_result
+                    failed_results.append(failed_result)
 
-    def _combine_batch_results(
-        self,
-        batch_results: List[Dict[str, Any]],
-        metrics: List[Any]
-    ) -> Dict[str, Any]:
-        """
-        Combine results from multiple batches
+                # Yield failed batch
+                yield (failed_results, batch_sample_ids, "failed")
 
-        Args:
-            batch_results: List of batch result dictionaries
-            metrics: List of metrics used
-
-        Returns:
-            Combined result dictionary
-        """
-        # Simple averaging of metric scores
-        combined = {}
-
-        for metric in metrics:
-            metric_name = metric.name
-            scores = [
-                result[metric_name]
-                for result in batch_results
-                if metric_name in result
-            ]
-
-            if scores:
-                combined[metric_name] = sum(scores) / len(scores)
-
-        self.logger.info("\nCombined batch results:")
-        for metric_name, score in combined.items():
-            self.logger.info(f"  {metric_name}: {score:.4f}")
-
-        return combined
+        self.logger.info(f"\n{'='*80}")
+        self.logger.info("Incremental Evaluation Complete")
+        self.logger.info(f"{'='*80}")
