@@ -17,8 +17,8 @@ RAG evaluation system for DKI Jakarta government planning documents using Ragas 
 # Install dependencies
 uv sync
 
-# Check OpenRouter API credits
-uv run python check_credits.py
+# Check OpenRouter account status (credits, rate limits, usage)
+uv run python check_openrouter_status.py
 ```
 
 ### Testset Generation Workflow
@@ -48,6 +48,13 @@ uv run python run_rag_executor.py --limit 10  # Test with limited queries
 uv run python run_ragas_evaluation.py --metric faithfulness --input results/rag_execution_250122_143022.jsonl
 uv run python run_ragas_evaluation.py --metric context_precision --input results/rag_execution_250122_143022.jsonl --resume  # Resume from checkpoint
 uv run python run_ragas_evaluation.py --metric answer_relevancy --input results/rag_execution_250122_143022.jsonl --skip-failed  # Exclude queries without contexts
+
+# Run Factual Correctness evaluation (optimized, timeout-resistant)
+uv run python evaluate_factual_correctness.py --input results/rag_execution_250122_143022.jsonl
+uv run python evaluate_factual_correctness.py --input results/rag_execution_250122_143022.jsonl --mode precision  # Faster: only check response claims
+uv run python evaluate_factual_correctness.py --input results/rag_execution_250122_143022.jsonl --resume  # Resume from checkpoint
+uv run python evaluate_factual_correctness.py --input results/rag_execution_250122_143022.jsonl --resume --retry-failed  # Retry timeout/failed samples
+uv run python evaluate_factual_correctness.py --input results/rag_execution_250122_143022.jsonl --timeout 300  # Custom timeout (5 min)
 ```
 
 ## Architecture
@@ -85,10 +92,11 @@ The testset generation uses a two-phase architecture for memory efficiency:
 
 ### Ragas Evaluation System
 
-**Evaluator** (`run_ragas_evaluation.py`)
+**Multi-Metric Evaluator** (`run_ragas_evaluation.py`)
 - Transforms executor JSONL to Ragas Dataset format
 - Evaluates using a single metric per run (specified via `--metric` argument)
 - Generates detailed results (JSONL) and markdown report
+- Supports all Ragas metrics including context-based metrics
 
 **Available Metrics**:
 - `context_precision`: Precision of retrieved contexts
@@ -99,6 +107,19 @@ The testset generation uses a two-phase architecture for memory efficiency:
 - `answer_correctness`: Correctness vs reference answer
 - `answer_similarity`: Semantic similarity to reference
 - `context_utilization`: How well contexts are used
+
+**Factual Correctness Evaluator** (`evaluate_factual_correctness.py`)
+- **Optimized single-metric script** for evaluating factual accuracy
+- **Timeout-resistant design**: Individual 600s timeout per sample, low atomicity/coverage
+- **Minimal data requirements**: Only needs `user_input`, `response`, `reference` (no contexts)
+- **Performance features**:
+  - One-by-one sample processing (isolates failures)
+  - Low atomicity/coverage settings (30-50% fewer claims)
+  - Timeout correlation analysis (identifies problematic sample lengths)
+  - Incremental JSONL writing (immediate save after each sample)
+- **Three scoring modes**: F1 (default), precision-only (50% faster), recall-only
+- **Output**: Precision, recall, F1 scores + processing time + timeout analysis
+- **Use when**: Experiencing timeout issues with multi-metric evaluation
 
 ### OpenRouter Integration
 
@@ -163,6 +184,18 @@ ragas_evaluation:
   embeddings_timeout_seconds: 180
 ```
 
+**Factual Correctness Evaluation**:
+```yaml
+factual_correctness_evaluation:
+  llm:
+    model: "x-ai/grok-code-fast-1"
+  mode: "F1"              # F1 | precision | recall
+  atomicity: "low"        # low (faster) | high (precise)
+  coverage: "low"         # low (faster) | high (comprehensive)
+  sample_timeout_seconds: 600   # 10 min per sample
+  max_sample_attempts: 3
+```
+
 ## Data Flow
 
 ### File Formats and Locations
@@ -183,6 +216,13 @@ ragas_evaluation:
   - `results/ragas_eval_detailed.jsonl` (per-query scores)
   - `results/ragas_eval_report.md` (summary report)
 - Checkpoint: `ragas_checkpoint.json`
+
+**Factual Correctness Evaluation**:
+- Input: `results/rag_execution_YYMMDD_HHMMSS.jsonl` (from executor)
+- Output:
+  - `results/factual_correctness_detailed.jsonl` (per-query scores)
+  - `results/factual_correctness_report.md` (summary + timeout analysis)
+- Checkpoint: `factual_correctness_checkpoint.json`
 
 ### JSONL Schema
 
@@ -213,6 +253,28 @@ ragas_evaluation:
   "context_precision": 0.85,
   "context_recall": 0.90,
   ...
+}
+```
+
+**Factual Correctness Detailed Output** (`factual_correctness_detailed.jsonl`):
+```json
+{
+  "query_id": 0,
+  "user_input": "Query text",
+  "response": "Generated answer",
+  "reference": "Reference answer",
+  "factual_correctness": 0.85,
+  "response_length": 1234,
+  "reference_length": 987,
+  "processing_time_ms": 5432,
+  "num_attempts": 1,
+  "status": "SUCCESS",
+  "error": "",
+  "evaluation_config": {
+    "mode": "F1",
+    "atomicity": "low",
+    "coverage": "low"
+  }
 }
 ```
 
@@ -278,3 +340,23 @@ OPENROUTER_API_KEY=your_api_key_here
 - Solution: Always specify a single metric using `--metric <metric_name>`
 - Example: `uv run python run_ragas_evaluation.py --metric faithfulness`
 - Valid metrics: `context_precision`, `context_recall`, `context_entity_recall`, `answer_relevancy`, `faithfulness`, `answer_correctness`, `answer_similarity`, `context_utilization`
+
+### Timeout Errors During Evaluation
+- **Symptom**: LLM-as-judge evaluations timing out frequently
+- **Root cause**: Large responses/references generate too many claims for verification
+- **Solution 1**: Use `evaluate_factual_correctness.py` with low atomicity/coverage
+  ```bash
+  uv run python evaluate_factual_correctness.py --input results/rag_execution.jsonl
+  ```
+- **Solution 2**: Use precision-only mode (50% faster)
+  ```bash
+  uv run python evaluate_factual_correctness.py --input results/rag_execution.jsonl --mode precision
+  ```
+- **Solution 3**: Increase timeout per sample
+  ```bash
+  uv run python evaluate_factual_correctness.py --input results/rag_execution.jsonl --timeout 900
+  ```
+- **Diagnosis**: Check the timeout correlation analysis in the report
+  - Identifies length threshold where timeouts become common
+  - Suggests max length limits for future evaluations
+  - Shows average processing time by sample length

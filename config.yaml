@@ -140,8 +140,9 @@ ragas_evaluation:
   # LLM Configuration for Ragas evaluation
   llm:
     # model: "x-ai/grok-code-fast-1"
-    # model: "openai/gpt-5.1-codex-mini"
-    model: "x-ai/grok-4.1-fast"
+    model: "openai/gpt-5.1-codex-mini"
+    # model: "x-ai/grok-4.1-fast"
+    # model: "moonshotai/kimi-k2-thinking"
     temperature: 0.7
 
   # Input file (output from RAG executor)
@@ -169,7 +170,7 @@ ragas_evaluation:
     - context_utilization
 
   # Batch configuration (incremental persistence)
-  batch_size: 1  # Number of samples per batch (results saved after each batch)
+  batch_size: 5  # Number of samples per batch (results saved after each batch)
 
   # Timeout configuration
   llm_timeout_seconds: 600  # LLM request timeout (10 minutes)
@@ -185,3 +186,52 @@ ragas_evaluation:
 
   # Progress tracking
   show_progress: true
+
+# Factual Correctness Evaluation Configuration
+# Optimized single-metric evaluation to prevent timeout errors
+factual_correctness_evaluation:
+  # LLM Configuration for factual correctness evaluation
+  llm:
+    # model: "x-ai/grok-code-fast-1"
+    # model: "google/gemini-2.5-flash"
+    model: "openai/gpt-5.1-codex-mini"
+    temperature: 0.0
+
+  # Output configuration
+  output_dir: "./results"
+  detailed_results_file: "factual_correctness_detailed.jsonl"
+  report_file: "factual_correctness_report.md"
+  checkpoint_file: "factual_correctness_checkpoint.json"
+
+  # Metric tuning (performance vs accuracy tradeoff)
+  # Mode: F1 (bidirectional), precision (response→reference only), recall (reference→response only)
+  mode: "F1"
+
+  # Atomicity: Controls claim granularity
+  # - low: Fewer, consolidated claims (faster evaluation, ~30-50% reduction)
+  # - high: More granular, atomic claims (slower, more precise)
+  atomicity: "low"
+
+  # Coverage: Controls claim comprehensiveness
+  # - low: Main points only (faster evaluation)
+  # - high: All details preserved (slower, comprehensive)
+  coverage: "low"
+
+  # Timeout strategy
+  sample_timeout_seconds: 600  # 10 minutes per sample (individual timeout)
+  max_sample_attempts: 3       # Retry failed samples up to 3 times
+  continue_on_timeout: true    # Don't stop evaluation on timeout
+
+  # OpenRouter API tuning (reduce concurrent load)
+  llm_timeout_seconds: 600     # LLM request timeout (10 minutes)
+  max_retries: 15              # For rate limit errors
+  max_wait: 90                 # Maximum backoff wait time (seconds)
+  max_workers: 4               # Reduce concurrent API calls
+
+  # Monitoring configuration
+  track_processing_times: true      # Track evaluation time per sample
+  track_length_correlation: true    # Analyze timeout vs text length correlation
+  log_timeout_details: true         # Log detailed timeout information
+
+  # Skip queries without responses (default: include with zero score)
+  skip_failed_queries: false

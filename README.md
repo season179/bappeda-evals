@@ -40,10 +40,12 @@ This approach achieves **99.8% memory reduction** while maintaining full knowled
 - Resume support with progress caching
 - Smart question-only translation (prevents LLM from answering)
 
-### Credit Management
-- Check OpenRouter account balance
-- Monitor API usage and remaining credits
-- Validate API connectivity before generation
+### Account Status Monitoring
+- Check OpenRouter credit balance and limits
+- Monitor rate limits and usage statistics
+- Track daily, weekly, and monthly API usage
+- View BYOK (Bring Your Own Key) usage
+- Validate account tier and limit reset schedules
 
 ## Project Structure
 
@@ -52,7 +54,7 @@ rag_eval_ragas/
 ├── extract_metadata.py            # Phase 1: Extract & cache metadata
 ├── generate_multihop_testset.py  # Phase 2: Generate queries from cache
 ├── translate_user_input.py        # Optional: Translate queries to Indonesian
-├── check_credits.py               # OpenRouter credit checker
+├── check_openrouter_status.py     # OpenRouter account status (credits, rate limits, usage)
 ├── config.yaml                    # Configuration file
 ├── knowledge-files/               # Source documents (8 documents)
 │   ├── LKPJ 2024.md              # 8.8MB - Large document
@@ -107,8 +109,8 @@ pip install -e .
 ### Quick Start
 
 ```bash
-# 1. Check your API credits (optional)
-uv run python check_credits.py
+# 1. Check your account status (optional)
+uv run python check_openrouter_status.py
 
 # 2. Extract metadata from documents (run once, ~3 minutes)
 uv run python extract_metadata.py
@@ -120,21 +122,37 @@ uv run python generate_multihop_testset.py --size 10
 uv run python translate_user_input.py --input multihop_testset.csv
 ```
 
-### Step 1: Check API Credits (Optional)
+### Step 1: Check Account Status (Optional)
 
 ```bash
-uv run python check_credits.py
+uv run python check_openrouter_status.py
 ```
 
 **Output:**
 ```
-==================================================
-OpenRouter Credit Balance
-==================================================
-Total Credits: $10.00
-Total Usage: $2.34
-Remaining Balance: $7.66
-==================================================
+============================================================
+OpenRouter Account Status
+============================================================
+
+📋 Account Overview
+------------------------------------------------------------
+API Key Label: sk-or-v1-...
+Account Type: Paid Account
+
+💳 Credit Limits & Balance
+------------------------------------------------------------
+Credit Cap: Unlimited
+Credits Remaining: Unlimited
+Limit Reset: Never
+
+📊 Usage Statistics
+------------------------------------------------------------
+All-Time Usage: $23.01
+Daily Usage: $2.94
+Weekly Usage: $8.95
+Monthly Usage: $9.87
+
+============================================================
 ```
 
 ### Step 2: Extract Metadata (Run Once)
@@ -416,7 +434,7 @@ RateLimitError: Rate limit exceeded
 AuthenticationError: Insufficient credits
 ```
 **Solution**:
-1. Run `python check_credits.py` to check balance
+1. Run `python check_openrouter_status.py` to check balance and usage
 2. Add credits at https://openrouter.ai/credits
 3. Or use a different API key
 
