@@ -19,7 +19,11 @@
       "Bash(python3:*)",
       "Bash(results/test_sample.jsonl)",
       "Bash(pip show:*)",
-      "Bash(uv run python3:*)"
+      "Bash(uv run python3:*)",
+      "Bash(for file in /Users/season/Personal/bappeda/rag_eval_ragas/knowledge-files/*.md)",
+      "Bash(done)",
+      "Bash(find:*)",
+      "Bash(jq:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,75 +1,70 @@
-uv run python run_ragas_evaluation.py --metric answer_correctness --input results/eval_results.csv
-[16:41:23] [INFO] Logging initialized - Main log: logs/main_20251122_164123.log
-[16:41:23] [INFO] ================================================================================
-[16:41:23] [INFO] Ragas Evaluation
-[16:41:23] [INFO] ================================================================================
-[16:41:23] [INFO] Configuration:
-[16:41:23] [INFO]   Input file: results/eval_results.csv
-[16:41:23] [INFO]   Output dir: ./results
-[16:41:23] [INFO]   Detailed results: results/ragas_eval_detailed.jsonl
-[16:41:23] [INFO]   Report: results/ragas_eval_report.md
-[16:41:23] [INFO]   Ragas LLM Model: x-ai/grok-4.1-fast
-[16:41:23] [INFO]   Ragas LLM Temperature: 0.7
-[16:41:23] [INFO]   Embedding Model: qwen/qwen3-embedding-8b
-[16:41:23] [INFO]   Metric: answer_correctness
-[16:41:23] [INFO]   Batch size: 1
-[16:41:23] [INFO]   Include failed queries: True
-[16:41:23] [INFO] 
+
 ================================================================================
-[16:41:23] [INFO] PRE-FLIGHT CHECKS
-[16:41:23] [INFO] ================================================================================
-[16:41:23] [INFO] ✓ Input file exists: results/eval_results.csv
-[16:41:23] [INFO] ✓ Output directory ready: ./results
-[16:41:23] [INFO] 
+TESTSET GENERATION - LARGE DOCUMENT MODE
 ================================================================================
-[16:41:23] [INFO] LOADING AND TRANSFORMING DATA
-[16:41:23] [INFO] ================================================================================
-Failed to parse JSON at line 1: Expecting value: line 1 column 1 (char 0)
-Failed to parse JSON at line 2: Extra data: line 1 column 2 (char 1)
-Failed to parse JSON at line 3: Extra data: line 1 column 2 (char 1)
-Failed to parse JSON at line 4: Extra data: line 1 column 2 (char 1)
-Failed to parse JSON at line 6: Expecting value: line 1 column 1 (char 0)
-Failed to parse JSON at line 7: Extra data: line 1 column 2 (char 1)
-Failed to parse JSON at line 9: Expecting value: line 1 column 1 (char 0)
-Failed to parse JSON at line 10: Expecting value: line 1 column 1 (char 0)
-Failed to parse JSON at line 11: Expecting value: line 1 column 1 (char 0)
-Failed to parse JSON at line 12: Expecting value: line 1 column 1 (char 0)
-Failed to parse JSON at line 14: Expecting value: line 1 column 1 (char 0)
-Failed to parse JSON at line 15: Extra data: line 1 column 2 (char 1)
-Failed to parse JSON at line 17: Expecting value: line 1 column 1 (char 0)
-Failed to parse JSON at line 19: Expecting value: line 1 column 1 (char 0)
-[16:41:23] [INFO] ✓ Loaded and transformed 0 records
-[16:41:23] [INFO] 
+
+Configuration:
+  Documents path: knowledge-files/
+  Testset size: 5
+  LLM model: openai/gpt-5.1-codex-mini
+  Embedding model: qwen/qwen3-embedding-8b
+
+Question Distribution:
+  Single-hop: 50% (~2 questions)
+    → Questions answerable from ONE document chunk
+  Multi-hop (specific): 25% (~1 questions)
+    → Fact-based questions requiring MULTIPLE chunks
+  Multi-hop (abstract): 25% (~1 questions)
+    → Interpretive questions synthesizing across chunks
+
+Chunking Strategy:
+  Min tokens per chunk: 300
+  Max tokens per chunk: 1000
+  → Optimized for large government documents
+
 ================================================================================
-[16:41:23] [INFO] INITIALIZING RAGAS EVALUATOR
-[16:41:23] [INFO] ================================================================================
-[16:41:23] [INFO] ✓ Ragas evaluator initialized
-[16:41:23] [INFO] 
+LOADING DOCUMENTS
 ================================================================================
-[16:41:23] [INFO] RUNNING RAGAS EVALUATION (INCREMENTAL)
-[16:41:23] [INFO] ================================================================================
-[16:41:23] [INFO] 
-✓ Evaluation completed in 0.0s
-[16:41:23] [INFO] Successful samples: 0
-[16:41:23] [INFO] Failed samples: 0
-[16:41:23] [INFO] 
+  0%|          | 0/8 [00:00<?, ?it/s]100%|██████████| 8/8 [00:00<00:00, 846.29it/s]
+/Users/season/Personal/bappeda/rag_eval_ragas/generate_testset_improved.py:331: DeprecationWarning: LangchainLLMWrapper is deprecated and will be removed in a future version. Use llm_factory instead: from openai import OpenAI; from ragas.llms import llm_factory; llm = llm_factory('gpt-4o-mini', client=OpenAI(api_key='...'))
+  generator_llm = LangchainLLMWrapper(openrouter_llm)
+/Users/season/Personal/bappeda/rag_eval_ragas/generate_testset_improved.py:337: DeprecationWarning: LangchainEmbeddingsWrapper is deprecated and will be removed in a future version. Use the modern embedding providers instead: embedding_factory('openai', model='text-embedding-3-small', client=openai_client) or from ragas.embeddings import OpenAIEmbeddings, GoogleEmbeddings, HuggingFaceEmbeddings
+  generator_embeddings = LangchainEmbeddingsWrapper(
+
+✓ Loaded 8 documents:
+  - PERDA NO.3 TAHUN 2025.md: 23,872 characters
+  - RPJPD 2025-2045.md: 716,713 characters
+  - RPJMD 2025-2029.md: 1,482,952 characters
+  - LKPJ 2024.md: 8,828,706 characters
+  - PERDA NO.2 TAHUN 2025.md: 13,292 characters
+  - RKPD 2025.md: 1,498,643 characters
+  - basis_pengetahuan_bappeda_dki_jakarta.md: 14,372 characters
+  - PERDA NO.1 TAHUN 2025.md: 16,045 characters
+
 ================================================================================
-[16:41:23] [INFO] PREPARING SUMMARY
-[16:41:23] [INFO] ================================================================================
-[16:41:23] [INFO] ✓ Detailed results saved to results/ragas_eval_detailed.jsonl
-[16:41:23] [INFO]   Total samples written: 0
-[16:41:23] [WARNING] No detailed results found for report generation
-[16:41:23] [ERROR] Failed to generate report: division by zero
-[16:41:23] [INFO] 
+INITIALIZING MODELS
 ================================================================================
-[16:41:23] [INFO] EVALUATION COMPLETE
-[16:41:23] [INFO] ================================================================================
-[16:41:23] [INFO] Total samples in dataset: 0
-[16:41:23] [INFO] Successful evaluations: 0
-[16:41:23] [INFO] Failed evaluations: 0
-[16:41:23] [INFO] Total time: 0.0s
-[16:41:23] [INFO] Detailed results: results/ragas_eval_detailed.jsonl
-[16:41:23] [INFO] Report: results/ragas_eval_report.md
-[16:41:23] [WARNING] No metrics calculated (no successful samples)
-[16:41:23] [INFO] 
-✓ Ragas evaluation completed successfully!
+✓ LLM initialized: openai/gpt-5.1-codex-mini (via OpenRouter)
+✓ Embeddings initialized: qwen/qwen3-embedding-8b (via OpenRouter)
+
+================================================================================
+BUILDING KNOWLEDGE GRAPH
+================================================================================
+
+[1/5] Creating initial knowledge graph from documents...
+✓ Created 8 document nodes
+
+[2/5] Extracting headlines (max 30 per document)...
+  → This identifies sections like 'BAB I', 'BAB II', etc.
+
+[3/5] Splitting documents into chunks (300-1000 tokens)...
+  → This breaks large documents into manageable sections
+
+[4/5] Extracting keyphrases (max 15 per chunk)...
+  → This identifies key concepts for connecting related chunks
+
+[5/5] Building relationships between chunks...
+  → This connects related sections (enables multi-hop questions)
+
+Applying transformations to knowledge graph...
+Applying HeadlinesExtractor:   0%|          | 0/8 [00:00<?, ?it/s]Applying HeadlinesExtractor:  12%|█▎        | 1/8 [00:09<01:04,  9.16s/it]Applying HeadlinesExtractor:  25%|██▌       | 2/8 [00:10<00:28,  4.68s/it]Applying HeadlinesExtractor:  38%|███▊      | 3/8 [00:12<00:16,  3.26s/it]Applying HeadlinesExtractor:  50%|█████     | 4/8 [00:15<00:13,  3.40s/it]Applying HeadlinesExtractor:  62%|██████▎   | 5/8 [05:09<05:24, 108.22s/it]
